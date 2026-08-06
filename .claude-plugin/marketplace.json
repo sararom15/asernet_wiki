@@ -1,0 +1,13 @@
+{
+  "name": "SLUG-VAULT",
+  "owner": {
+    "name": "NOME COGNOME"
+  },
+  "plugins": [
+    {
+      "name": "SLUG-VAULT-wiki",
+      "source": "./",
+      "description": "I comandi del vault SLUG-VAULT: progetto, ingest, chiedi, lint, pubblica, nuovo-progetto."
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "SLUG-VAULT-wiki",
+  "version": "0.1.0",
+  "description": "I comandi del vault SLUG-VAULT: progetto, ingest, chiedi, lint, pubblica, nuovo-progetto. Applicano il metodo definito in CLAUDE.md.",
+  "author": {
+    "name": "NOME COGNOME"
+  },
+  "repository": "https://github.com/UTENTE-GITHUB/SLUG-VAULT",
+  "keywords": ["wiki", "okf", "obsidian", "knowledge-base"],
+  "skills": "./.claude/skills/"
+}

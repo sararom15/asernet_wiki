@@ -1,0 +1,15 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# I binari non vanno normalizzati: raw/ è versionato e contiene documenti.
+*.pdf   binary
+*.docx  binary
+*.xlsx  binary
+*.pptx  binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+
+# Gli index.md sono derivati: non si risolvono a mano, si rigenerano con /lint.
+# Richiede `git config merge.ours.driver true` su ogni macchina.
+**/index.md merge=ours
