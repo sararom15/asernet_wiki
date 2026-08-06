@@ -3,12 +3,12 @@ type: Entity
 title: Asernet
 description: Agenzia di consulenza strategica per progetti e-commerce e marketing digitale, rivolta a PMI italiane.
 tags: [azienda, agenzia]
-timestamp: 2026-08-06T16:00:00+02:00
+timestamp: 2026-08-06T18:45:00+02:00
 project: asernet
 status: draft
 confidence: high
 derived_from: [raw/2026-08-06-sito-asernet-it.md]
-refs: [concepts/datapyx-ai.md, entities/baustoff-metall.md, entities/tre-g-group.md, entities/shop-in-casa.md, entities/popolo-hotellerie.md]
+refs: [concepts/datapyx-ai.md, concepts/data-genius.md, entities/baustoff-metall.md, entities/tre-g-group.md, entities/shop-in-casa.md, entities/popolo-hotellerie.md]
 authored_by: claude-ingest
 ---
 
@@ -24,7 +24,9 @@ Ragione sociale ALL SERVICE NETWORK SRL (in sigla ASERNET SRL), P.IVA 0214330071
 
 Offre quattro aree di servizio: Business Design (assessment strategico, analisi del modello di business, customer discovery, business plan), Performance Marketing (posizionamento, brand, SEO, advertising, marketing automation), E-commerce & IT (sviluppo e-commerce B2B/B2C, siti aziendali, system integration, hosting, cybersecurity) e IA & Data Analysis (KPI, dashboard, tracking, analisi predittive, piattaforma proprietaria [Datapyx.ai](../concepts/datapyx-ai.md)).
 
-Partecipa al progetto cofinanziato UE/Regione Puglia "Data Genius" (cod. W4RIQM3, PR Puglia FESR FSE+ 2021-2027, avviso "Trasformazioni"). Dichiara partnership tecniche con Netcomm (socio), SalesManago, Iubenda (gold partner), PrestaShop (expert), Sophos, Nethesis.
+[Datapyx.ai](../concepts/datapyx-ai.md) è inoltre dichiarata **business unit** di Asernet Srl, con brand, dominio e listino propri: non è solo uno strumento a supporto delle quattro aree. Le due presentazioni divergono; la divergenza è registrata sulla pagina della piattaforma.
+
+È impresa beneficiaria del progetto cofinanziato [Data Genius](../concepts/data-genius.md). Dichiara partnership tecniche con Netcomm (socio), SalesManago, Iubenda (gold partner), PrestaShop (expert), Sophos, Nethesis.
 
 ## Relazioni
 
