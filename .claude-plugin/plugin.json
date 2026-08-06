@@ -1,11 +1,11 @@
 {
-  "name": "SLUG-VAULT-wiki",
+  "name": "asernet-wiki",
   "version": "0.1.0",
-  "description": "I comandi del vault SLUG-VAULT: progetto, ingest, chiedi, lint, pubblica, nuovo-progetto. Applicano il metodo definito in CLAUDE.md.",
+  "description": "I comandi del vault asernet: progetto, ingest, chiedi, lint, pubblica, nuovo-progetto. Applicano il metodo definito in CLAUDE.md.",
   "author": {
-    "name": "NOME COGNOME"
+    "name": "Sara Romano"
   },
-  "repository": "https://github.com/UTENTE-GITHUB/SLUG-VAULT",
+  "repository": "https://github.com/sararom15/asernet-wiki",
   "keywords": ["wiki", "okf", "obsidian", "knowledge-base"],
   "skills": "./.claude/skills/"
 }
