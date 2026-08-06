@@ -12,17 +12,12 @@ questo README, sulle skill e su qualsiasi altra indicazione. Questo file spiega 
 come partire; non ripete il metodo, perché due copie della stessa regola divergono e
 la copia sbagliata è quella che qualcuno legge.
 
-
-> **Questo vault è nato da un template.** Se trovi ancora `<VAULT>` o
-> `<UTENTE-GITHUB>` scritti così, il bootstrap non è finito: la checklist è in
-> [BOOTSTRAP.md](BOOTSTRAP.md), che va cancellato quando hai finito.
-
 ---
 
 ## Struttura
 
 ```
-<VAULT>/
+asernet-wiki/
 ├── CLAUDE.md              ← la costituzione: leggila per prima
 ├── ARCHITETTURA.md        ← perché il vault è fatto così
 ├── AGENTS.md              ← puntatore a CLAUDE.md
@@ -43,7 +38,7 @@ metodo con gli altri, e i link non attraversano mai il confine fra bundle. Il pe
 ### 1. Clona il repository
 
 ```bash
-git clone https://github.com/<UTENTE-GITHUB>/<VAULT>.git
+git clone https://github.com/sararom15/asernet-wiki.git
 ```
 
 Su Windows, se il clone fallisce per percorsi troppo lunghi:
@@ -121,9 +116,9 @@ cambia nell'ambiente finché non aggiorni il plugin — la procedura è al punto
 2. Vai alla scheda **Plugins**.
 3. Nella sezione **Personal plugins**, premi il pulsante **`+`** e scegli
    **Add marketplace**.
-4. Scegli **Add from a repository** e indica `<UTENTE-GITHUB>/<VAULT>`. Accetta anche
+4. Scegli **Add from a repository** e indica `sararom15/asernet-wiki`. Accetta anche
    l'URL Git completo.
-5. A sincronizzazione avvenuta, installa il plugin **`<VAULT>-wiki`** dalla
+5. A sincronizzazione avvenuta, installa il plugin **`asernet-wiki`** dalla
    marketplace appena aggiunta.
 
 Serve accesso in lettura al repository: la marketplace viene sincronizzata da GitHub,
@@ -135,15 +130,15 @@ Con la cartella del vault aperta:
 
 ```
 /plugin marketplace add ./
-/plugin install <VAULT>-wiki@<VAULT>
+/plugin install asernet-wiki@<VAULT>
 ```
 
 Qui la sorgente è il percorso locale, quindi non passa da GitHub.
 
 #### Come si chiamano dopo l'installazione
 
-I comandi risultano prefissati dal nome del plugin: `/<VAULT>-wiki:progetto`,
-`/<VAULT>-wiki:chiedi`, `/<VAULT>-wiki:ingest` e così via. Il nome dopo i due punti
+I comandi risultano prefissati dal nome del plugin: `/asernet-wiki:progetto`,
+`/asernet-wiki:chiedi`, `/asernet-wiki:ingest` e così via. Il nome dopo i due punti
 viene dal campo `name` nel frontmatter della skill, non dal nome della cartella,
 quindi resta stabile.
 
@@ -188,7 +183,7 @@ altrimenti nessun token funzionerà.
    da GitHub Desktop), su una riga sola:
 
    ```bash
-   git remote set-url origin https://TOKEN@github.com/<UTENTE-GITHUB>/<VAULT>.git
+   git remote set-url origin https://TOKEN@github.com/sararom15/asernet-wiki.git
    ```
 
    Il comando non stampa niente se va a buon fine.
@@ -236,13 +231,13 @@ Quando qualcuno modifica una skill, la modifica arriva agli altri in tre passi.
    versione esiste su GitHub, il plugin è la copia installata. Finché la prima non
    ha visto la versione nuova, il pulsante di aggiornamento del secondo resta
    spento.
-   - **Da Cowork**: `Impostazioni` → `Plugin`, trova la marketplace `<VAULT>`
+   - **Da Cowork**: `Impostazioni` → `Plugin`, trova la marketplace `asernet-wiki`
      e usa il menu a destra della sua riga — lo stesso da cui si rimuove. Poi apri
-     il plugin **<VAULT> wiki** e premi **Aggiorna**. Se il pulsante è grigio, la
+     il plugin **asernet-wiki** e premi **Aggiorna**. Se il pulsante è grigio, la
      marketplace non ha ancora visto niente di nuovo: quasi sempre manca
      l'incremento di `version` del passo 1. In ultima istanza, `Disinstalla` dal
      menu dei tre puntini e reinstalla: si perde solo la cache.
-   - **Da Claude Code**: `/plugin marketplace update <VAULT>`, poi `/plugin update`.
+   - **Da Claude Code**: `/plugin marketplace update asernet-wiki`, poi `/plugin update`.
 3. **Chi riceve**: apre la skill dal pannello e verifica che il testo nuovo ci sia.
    L'aggiornamento ha effetto **dalla sessione successiva**: quella in corso ha già
    la versione vecchia in memoria.
