@@ -13,3 +13,6 @@ una pagina in `entities/`, per evitare duplicati.
 | Datapyx.ai | Datapyx | `concepts/datapyx-ai.md` |
 | Data Genius | cod. W4RIQM3 | `concepts/data-genius.md` |
 | Beople | — | nessuna pagina — citato una sola volta come ente formatore dei consulenti Asernet |
+| Boraso | — | `entities/boraso.md` |
+| Floox | — | `entities/floox.md` |
+| Making Science | — | `entities/making-science.md` |

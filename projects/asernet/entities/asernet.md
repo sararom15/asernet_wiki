@@ -3,12 +3,12 @@ type: Entity
 title: Asernet
 description: Agenzia di consulenza strategica per progetti e-commerce e marketing digitale, rivolta a PMI italiane.
 tags: [azienda, agenzia]
-timestamp: 2026-08-06T18:45:00+02:00
+timestamp: 2026-08-06T19:00:00+02:00
 project: asernet
 status: draft
 confidence: high
-derived_from: [raw/2026-08-06-sito-asernet-it.md]
-refs: [concepts/datapyx-ai.md, concepts/data-genius.md, entities/baustoff-metall.md, entities/tre-g-group.md, entities/shop-in-casa.md, entities/popolo-hotellerie.md]
+derived_from: [raw/2026-08-06-sito-asernet-it.md, raw/Positioning_Canvas_Asernet.pdf]
+refs: [concepts/datapyx-ai.md, concepts/data-genius.md, entities/baustoff-metall.md, entities/tre-g-group.md, entities/shop-in-casa.md, entities/popolo-hotellerie.md, concepts/proposta-di-valore-asernet.md, concepts/analisi-competitiva-asernet-2023.md, entities/boraso.md, entities/floox.md, entities/making-science.md]
 authored_by: claude-ingest
 ---
 
@@ -27,6 +27,8 @@ Offre quattro aree di servizio: Business Design (assessment strategico, analisi 
 [Datapyx.ai](../concepts/datapyx-ai.md) è inoltre dichiarata **business unit** di Asernet Srl, con brand, dominio e listino propri: non è solo uno strumento a supporto delle quattro aree. Le due presentazioni divergono; la divergenza è registrata sulla pagina della piattaforma.
 
 È impresa beneficiaria del progetto cofinanziato [Data Genius](../concepts/data-genius.md). Dichiara partnership tecniche con Netcomm (socio), SalesManago, Iubenda (gold partner), PrestaShop (expert), Sophos, Nethesis.
+
+Un Positioning Canvas del 30-06-2023 documenta la proposta di valore, il benchmark con i competitor [Boraso](../entities/boraso.md), [Floox](../entities/floox.md) e [Making Science](../entities/making-science.md), e un'analisi SWOT — vedi [Proposta di valore Asernet](../concepts/proposta-di-valore-asernet.md) e [Analisi competitiva Asernet (2023)](../concepts/analisi-competitiva-asernet-2023.md).
 
 ## Relazioni
 
