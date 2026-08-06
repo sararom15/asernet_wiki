@@ -1,13 +1,13 @@
 {
-  "name": "SLUG-VAULT",
+  "name": "asernet",
   "owner": {
-    "name": "NOME COGNOME"
+    "name": "Sara Romano"
   },
   "plugins": [
     {
-      "name": "SLUG-VAULT-wiki",
+      "name": "asernet-wiki",
       "source": "./",
-      "description": "I comandi del vault SLUG-VAULT: progetto, ingest, chiedi, lint, pubblica, nuovo-progetto."
+      "description": "I comandi del vault asernet: progetto, ingest, chiedi, lint, pubblica, nuovo-progetto."
     }
   ]
 }
