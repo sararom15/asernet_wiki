@@ -19,7 +19,8 @@ L'`id` è in kebab-case ed è **stabile**: cambiano nome ed email, non l'id.
 
 | id | tipo | nome | email git |
 |---|---|---|---|
-| `<tuo-id>` | human | Nome Cognome | tu@example.com |
+| `sara` | human | Sara Romano | sara.romano.15@gmail.com |
+| `marco` | human | Marco Marcelloni | info@bitsite.it |
 | `claude-ingest` | agent | Claude — operazioni di `/ingest` sul vault | — |
 
 ## Regola di disambiguazione
