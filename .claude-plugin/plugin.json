@@ -5,7 +5,7 @@
   "author": {
     "name": "Sara Romano"
   },
-  "repository": "https://github.com/sararom15/asernet-wiki",
+  "repository": "https://github.com/sararom15/asernet_wiki",
   "keywords": ["wiki", "okf", "obsidian", "knowledge-base"],
   "skills": "./.claude/skills/",
   "mcpServers": {
