@@ -1,6 +1,5 @@
 {
   "name": "asernet-wiki",
-  "version": "0.2.0",
   "description": "I comandi del vault asernet: progetto, ingest, chiedi, lint, pubblica, nuovo-progetto. Applicano il metodo definito in CLAUDE.md. Include il server MCP che esegue le operazioni git del vault.",
   "author": {
     "name": "Sara Romano"

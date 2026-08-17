@@ -807,6 +807,15 @@ Il server trova il vault in quest'ordine: `VAULT_PATH` se impostata, poi
 risalendo da `CLAUDE_PROJECT_DIR`, poi dalla cartella di lavoro, cercando il
 primo livello che contenga sia `.git` sia `CLAUDE.md`.
 
+**`plugin.json` non ha un campo `version`, e la sua assenza è deliberata: non
+reintrodurlo.** Senza quel campo la versione del plugin è il commit SHA del
+repository, quindi ogni push è un aggiornamento disponibile e pubblicare il vault
+coincide con distribuire il metodo. Con una versione dichiarata a mano, una
+modifica a una skill non raggiunge nessuno finché qualcuno non si ricorda di
+alzare il numero — e le altre identità restano su un metodo superato credendo di
+avere l'ultimo, che è lo stesso difetto che il pull obbligatorio di §5.6 esiste
+per impedire.
+
 **Se le tool non sono disponibili** — server non installato, plugin non
 aggiornato, processo morto — le skill non tornano a scrivere a mano: restano in
 sola lettura e **passano all'utente i comandi da lanciare**. Un vault senza
