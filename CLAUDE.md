@@ -807,6 +807,18 @@ Il server trova il vault in quest'ordine: `VAULT_PATH` se impostata, poi
 risalendo da `CLAUDE_PROJECT_DIR`, poi dalla cartella di lavoro, cercando il
 primo livello che contenga sia `.git` sia `CLAUDE.md`.
 
+**In Cowork la risalita non funziona, e non è un difetto da correggere.** Il
+server parte con la cartella di lavoro sulla scratchpad della sessione, non sul
+vault, e `CLAUDE_PROJECT_DIR` non è impostata: non c'è niente da cui risalire.
+Per questo il plugin dichiara un `userConfig` di tipo `directory`, che fa chiedere
+la cartella del vault al momento dell'attivazione e la passa al server come
+`VAULT_PATH`. La risalita resta utile altrove — in Claude Code, dove la sessione è
+già aperta dentro il vault — quindi si tiene come ripiego, non come meccanismo
+principale.
+
+Se una tool risponde «Non trovo il vault», la causa è quasi sempre quel valore non
+compilato: si rimedia dalla configurazione del plugin, non toccando il server.
+
 **`version` in `plugin.json` va incrementato a ogni modifica delle skill o del
 server. Non rimuoverlo.** La documentazione di Claude Code elenca il commit SHA
 come versione di ripiego per le marketplace ospitate su Git, il che suggerisce
