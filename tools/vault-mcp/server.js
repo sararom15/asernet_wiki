@@ -4,14 +4,14 @@
 /**
  * vault-mcp — server MCP locale per un vault wiki multi-progetto.
  *
- * Espone QUATTRO operazioni git con nomi propri. Non espone una shell.
+ * Espone CINQUE operazioni git con nomi propri. Non espone una shell.
  * Ciò che non è una tool qui dentro non è eseguibile: l'elenco di comandi
  * ammessi delle skill smette di essere una regola scritta in italiano e
  * diventa la superficie del server.
  *
  * Invarianti che il server impone da sé, non per fiducia nel chiamante:
- *   - opera solo dentro VAULT_PATH, che è fissato nella config, non passato
- *     come argomento da chi chiama;
+ *   - opera su un solo vault, risolto all'avvio e mai passato come argomento
+ *     da chi chiama: nessuna tool accetta un percorso di repository;
  *   - ogni pull è --ff-only: mai un merge non richiesto su pagine di contenuto;
  *   - un solo punto fa un vero merge, vault_publish, e solo dopo aver
  *     verificato che L ∩ R sia vuoto;
@@ -19,12 +19,9 @@
  *   - niente --force, --amend, reset, checkout, rebase. Non sono implementati,
  *     quindi non sono raggiungibili.
  *
- * Config (in claude_desktop_config.json):
- *   "vault-asernet": {
- *     "command": "node",
- *     "args": ["C:\\percorso\\vault-mcp\\server.js"],
- *     "env": { "VAULT_PATH": "C:\\Users\\sarar\\Documents\\GitHub\\asernet_wiki" }
- *   }
+ * Di norma non richiede configurazione: viaggia nel plugin e riconosce il proprio
+ * vault da sé (vedi resolveVault). `VAULT_PATH` resta come scavalco esplicito, per
+ * chi ha il clone in un posto insolito o più cloni dello stesso repository.
  */
 
 const { execFileSync } = require('child_process');
@@ -41,10 +38,13 @@ const path = require('path');
  * cache, mentre il vault di lavoro sta dove ogni persona l'ha clonato. Quindi
  * il server si arrangia, in quest'ordine:
  *
- *   1. VAULT_PATH, se impostata. È l'override esplicito e vince su tutto:
- *      chi ha più di un vault deve poter dire quale.
+ *   1. VAULT_PATH, se impostata *e sostituita*. È l'override esplicito e vince
+ *      su tutto: chi ha più di un clone deve poter dire quale.
  *   2. risalita da CLAUDE_PROJECT_DIR, se l'ambiente la fornisce.
  *   3. risalita dalla cartella di lavoro del processo.
+ *   4. scansione delle posizioni tipiche di clone, riconoscendo il proprio
+ *      repository dall'`origin` (vedi scanForVault). È l'unica che funziona in
+ *      Cowork, dove i primi tre non hanno da dove partire.
  *
  * «Risalita» significa: da quella cartella verso la radice, il primo livello
  * che contiene sia `.git` sia `CLAUDE.md`. Entrambi, non uno: `.git` da solo
@@ -69,9 +69,107 @@ function findVaultFrom(start) {
   }
 }
 
+/**
+ * Il repository a cui questo server appartiene, letto dal `plugin.json` che sta
+ * accanto a lui nella copia del plugin. Serve a riconoscere il proprio vault
+ * fra più cloni: non «un vault qualsiasi», ma quello il cui `origin` è questo.
+ */
+function expectedRepo() {
+  const candidati = [
+    path.resolve(__dirname, '..', '..', '.claude-plugin', 'plugin.json'),
+    path.resolve(__dirname, '..', '..', '..', '.claude-plugin', 'plugin.json'),
+  ];
+  for (const f of candidati) {
+    try {
+      const repo = JSON.parse(fs.readFileSync(f, 'utf8')).repository;
+      if (repo) {
+        const m = String(repo).match(/([^/:]+\/[^/]+?)(?:\.git)?$/);
+        if (m) return m[1].toLowerCase();
+      }
+    } catch {
+      /* passa al prossimo */
+    }
+  }
+  return null;
+}
+
+/** L'`origin` di una cartella, senza passare da git() che vuole VAULT_PATH. */
+function originOf(dir) {
+  try {
+    return execFileSync('git', ['-C', dir, 'remote', 'get-url', 'origin'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: 10000,
+    }).trim().toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Cerca cloni del *proprio* repository nelle posizioni tipiche.
+ *
+ * In Cowork la risalita non serve a niente: il server parte con la cartella di
+ * lavoro sulla scratchpad della sessione, e `CLAUDE_PROJECT_DIR` non esiste. E
+ * `userConfig`, che sarebbe il meccanismo giusto, l'interfaccia non lo chiede.
+ * Quindi si guarda dove i cloni stanno per davvero.
+ *
+ * Non è un indovinello: un candidato è valido solo se è un vault (`.git` +
+ * `CLAUDE.md`) **e** il suo `origin` punta al repository dichiarato in
+ * `plugin.json`. Se i candidati validi sono più di uno il server **non sceglie**:
+ * si ferma e li elenca, perché scegliere il vault sbagliato significherebbe
+ * scrivere nel posto sbagliato.
+ */
+function scanForVault() {
+  const atteso = expectedRepo();
+  if (!atteso) return { path: null, candidati: [] };
+
+  const home = process.env.USERPROFILE || process.env.HOME;
+  if (!home) return { path: null, candidati: [] };
+
+  const radici = [
+    path.join(home, 'Documents', 'GitHub'),
+    path.join(home, 'Documents'),
+    path.join(home, 'source', 'repos'),
+    path.join(home, 'git'),
+    path.join(home, 'repos'),
+    path.join(home, 'Projects'),
+    home,
+  ];
+
+  const trovati = new Set();
+  for (const radice of radici) {
+    let voci;
+    try {
+      voci = fs.readdirSync(radice, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const v of voci) {
+      // I symlink vanno accettati: su Windows le cartelle reindirizzate — da
+      // OneDrive, o da una junction verso un altro disco — non sono directory
+      // per `withFileTypes`, e scartarle renderebbe la scansione cieca proprio
+      // sulle configurazioni meno standard.
+      if (!(v.isDirectory() || v.isSymbolicLink()) || v.name.startsWith('.')) continue;
+      const dir = path.join(radice, v.name);
+      if (!fs.existsSync(path.join(dir, '.git'))) continue;
+      if (!fs.existsSync(path.join(dir, 'CLAUDE.md'))) continue;
+      if (originOf(dir).includes(atteso)) trovati.add(dir);
+    }
+  }
+
+  const candidati = [...trovati];
+  return { path: candidati.length === 1 ? candidati[0] : null, candidati, atteso };
+}
+
 function resolveVault() {
   const explicit = process.env.VAULT_PATH;
-  if (explicit) return { path: explicit, source: 'VAULT_PATH' };
+  // Una VAULT_PATH non sostituita — il plugin dichiara ${user_config.…} e
+  // l'interfaccia non l'ha compilata — arriva qui come testo letterale. Non è
+  // un path: va ignorata, altrimenti maschera la scansione che funziona.
+  if (explicit && !explicit.includes('${')) {
+    return { path: explicit, source: 'VAULT_PATH' };
+  }
 
   const fromProject = findVaultFrom(process.env.CLAUDE_PROJECT_DIR);
   if (fromProject) return { path: fromProject, source: 'risalita da CLAUDE_PROJECT_DIR' };
@@ -79,7 +177,12 @@ function resolveVault() {
   const fromCwd = findVaultFrom(process.cwd());
   if (fromCwd) return { path: fromCwd, source: 'risalita dalla cartella di lavoro' };
 
-  return { path: null, source: null };
+  const scan = scanForVault();
+  if (scan.path) {
+    return { path: scan.path, source: `clone di ${scan.atteso} trovato in ${scan.path}` };
+  }
+
+  return { path: null, source: null, ambigui: scan.candidati, atteso: scan.atteso };
 }
 
 const RESOLVED = resolveVault();
@@ -87,12 +190,20 @@ const VAULT_PATH = RESOLVED.path;
 
 function assertVault() {
   if (!VAULT_PATH) {
+    if (RESOLVED.ambigui && RESOLVED.ambigui.length > 1) {
+      throw new Error(
+        `Ho trovato più cloni di ${RESOLVED.atteso} e non scelgo da solo:\n` +
+          RESOLVED.ambigui.map((d) => `  - ${d}`).join('\n') +
+          '\nImposta VAULT_PATH su quello giusto nella configurazione del server: ' +
+          'scrivere nel vault sbagliato è un danno che non si vede subito.'
+      );
+    }
     throw new Error(
-      'Non trovo il vault. Ho cercato VAULT_PATH nell\'ambiente, poi ho risalito da ' +
-        `CLAUDE_PROJECT_DIR e dalla cartella di lavoro (${process.cwd()}) in cerca di una ` +
-        'cartella che contenga sia .git sia CLAUDE.md, senza successo. ' +
-        'Imposta VAULT_PATH nella configurazione del server, oppure apri la sessione ' +
-        'dentro la cartella del vault.'
+      'Non trovo il vault. Ho provato, in ordine: VAULT_PATH nell\'ambiente; la ' +
+        'risalita da CLAUDE_PROJECT_DIR; la risalita dalla cartella di lavoro ' +
+        `(${process.cwd()}); e la ricerca di un clone di ${RESOLVED.atteso || 'questo repository'} ` +
+        'nelle posizioni tipiche sotto la cartella utente. ' +
+        'Se il vault è clonato altrove, imposta VAULT_PATH nella configurazione del server.'
     );
   }
   if (!fs.existsSync(path.join(VAULT_PATH, '.git'))) {

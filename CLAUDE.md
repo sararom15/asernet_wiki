@@ -807,17 +807,26 @@ Il server trova il vault in quest'ordine: `VAULT_PATH` se impostata, poi
 risalendo da `CLAUDE_PROJECT_DIR`, poi dalla cartella di lavoro, cercando il
 primo livello che contenga sia `.git` sia `CLAUDE.md`.
 
-**In Cowork la risalita non funziona, e non è un difetto da correggere.** Il
-server parte con la cartella di lavoro sulla scratchpad della sessione, non sul
-vault, e `CLAUDE_PROJECT_DIR` non è impostata: non c'è niente da cui risalire.
-Per questo il plugin dichiara un `userConfig` di tipo `directory`, che fa chiedere
-la cartella del vault al momento dell'attivazione e la passa al server come
-`VAULT_PATH`. La risalita resta utile altrove — in Claude Code, dove la sessione è
-già aperta dentro il vault — quindi si tiene come ripiego, non come meccanismo
-principale.
+**In Cowork i primi tre modi non funzionano, e non è un difetto da correggere.**
+Il server parte con la cartella di lavoro sulla scratchpad della sessione, non sul
+vault, e `CLAUDE_PROJECT_DIR` non è impostata: non c'è niente da cui risalire. Il
+plugin dichiara anche un `userConfig` di tipo `directory`, che sarebbe il
+meccanismo giusto, ma **l'interfaccia di Cowork non chiede quel valore**: arriva al
+server come testo letterale `${user_config.vault_path}`, e il server lo riconosce
+come non sostituito e lo ignora.
 
-Se una tool risponde «Non trovo il vault», la causa è quasi sempre quel valore non
-compilato: si rimedia dalla configurazione del plugin, non toccando il server.
+Quindi c'è un quarto modo, ed è quello che funziona qui: il server cerca cloni del
+**proprio** repository nelle posizioni tipiche sotto la cartella utente —
+`Documents/GitHub` per prima, dove GitHub Desktop mette i cloni. Un candidato vale
+solo se è un vault (`.git` + `CLAUDE.md`) **e** il suo `origin` corrisponde al
+campo `repository` di `plugin.json`. Non è un indovinello ma un riconoscimento, e
+per questo non richiede configurazione da nessuno: chi installa il plugin non deve
+compilare niente.
+
+**Se i cloni validi sono più di uno, il server si ferma e li elenca.** Non sceglie
+lui: scrivere nel vault sbagliato è un danno che non si vede subito. In quel caso
+serve `VAULT_PATH` esplicita, che resta lo scavalco per chi ha il clone in un posto
+insolito o più copie dello stesso repository.
 
 **`version` in `plugin.json` va incrementato a ogni modifica delle skill o del
 server. Non rimuoverlo.** La documentazione di Claude Code elenca il commit SHA
