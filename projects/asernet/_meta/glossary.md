@@ -16,3 +16,11 @@ una pagina in `entities/`, per evitare duplicati.
 | Boraso | — | `entities/boraso.md` |
 | Floox | — | `entities/floox.md` |
 | Making Science | — | `entities/making-science.md` |
+| Overly.it | Overly | `entities/overly-it.md` |
+| Sanitaria e Ortopedia | Sanitaria e Ortopedica | `entities/sanitaria-e-ortopedia.md` |
+| Domenico Palma Valente | — | `entities/domenico-palma-valente.md` |
+| Raffaele Tortora | — | `entities/raffaele-tortora.md` |
+| Pasquale Cipriani | — | `entities/pasquale-cipriani.md` |
+| Marco Macelloni | — | `entities/marco-macelloni.md` |
+| Anna Angeloro | — | `entities/anna-angeloro.md` |
+| Sara Romano | — | `entities/sara-romano.md` |

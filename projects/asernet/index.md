@@ -9,17 +9,17 @@ Wiki interna di Asernet, agenzia di consulenza strategica per progetti e-commerc
 **Metodo**: vedi [schema](_meta/schema.md) · **Storico**: vedi [log](log.md)
 
 ## Sezioni
-- Fonti — 3 pagine
-- Entità — 8 pagine
+- Fonti — 4 pagine
+- Entità — 16 pagine
 - Concetti — 6 pagine
 - Decisioni — 0 pagine
 - Sintesi — 0 pagine
 
 ## Domande aperte
 - Domanda guida del bundle non ancora definita (schema §1) — da stabilire prima di considerare lo schema pronto.
-- Criteri di granularità non definiti (schema §4): le pagine create finora riflettono scelte caso per caso, non una regola.
+- Criteri di granularità non definiti (schema §4): le pagine create finora riflettono scelte caso per caso, non una regola. La sessione del 2026-08-17 ha deciso caso per caso una pagina `Entity` per persona per il team Asernet — non ancora formalizzato come criterio generale nello schema.
 - `type` di Datapyx.ai: oggi `Concept`, ma lo schema definisce `Entity` come "attore concreto: persona, ente, sistema, prodotto". Da decidere.
-- Ammissibilità delle fonti (schema §2): la §2 nomina solo asernet.it, ma è già stato ingerito anche datapyx.ai. Da estendere.
+- Ammissibilità delle fonti (schema §2): la §2 nomina solo asernet.it, ma sono già stati ingeriti anche datapyx.ai e un estratto da un altro vault (FullBrain, cross-vault, 2026-08-17). Da estendere esplicitamente.
 - Datapyx.ai è strumento interno o prodotto autonomo? Contraddizione aperta su `concepts/datapyx-ai.md`.
 - Il Positioning Canvas (2023) ha un tono da esercizio guidato, forse assistito da IA: non è chiaro se rifletta una posizione validata dal team Asernet — vedi `sources/2023-06-30-positioning-canvas-asernet.md`.
 
@@ -30,3 +30,5 @@ Wiki interna di Asernet, agenzia di consulenza strategica per progetti e-commerc
 - Di datapyx.ai non sono state recuperate la sezione "News & Approfondimenti" né l'area applicativa dietro login.
 - Beople è citato come ente formatore dei consulenti Asernet ma non ha una pagina: una sola menzione non la giustifica.
 - Boraso, Floox, Making Science: pagine `Entity` basate su un'unica fonte (Positioning Canvas 2023), nessuna fonte propria ancora raccolta.
+- Le 6 nuove pagine `Entity` del team (2026-08-17) hanno tutte `confidence: medium` e un'unica fonte (l'estratto FullBrain): nessun dettaglio biografico o professionale oltre nome e ruolo.
+- Visual identity, palette colori, font, valori aziendali e tono di voce di Asernet sono documentati in dettaglio in FullBrain ma restano fuori dal perimetro OKF di questo bundle (posizionamento/proposta di valore/mercato/competitor/clienti/decisioni): non riportati qui deliberatamente.
