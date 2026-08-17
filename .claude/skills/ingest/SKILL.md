@@ -15,7 +15,7 @@ File da ingerire: `$ARGUMENTS`
 La risincronizzazione della fase A.1 passa dalla tool **`vault_sync`** del server
 MCP del vault. Chiamala per nome corto: il nome pieno cambia col modo di
 installazione (`mcp__vault-asernet__…` con la config manuale,
-`mcp__plugin_asernet-wiki_vault__…` se il server arriva col plugin).
+`mcp__plugin_asernet-vault_vault__…` se il server arriva col plugin).
 
 `vault_sync` fa `git pull --ff-only` e non ti dà modo di farlo diversamente. Un
 pull normale tenterebbe un merge su pagine di contenuto senza che nessuno lo

@@ -20,7 +20,7 @@ non le ha fatte, il posto per rimediare non è questo: **fermati e dillo.**
 La scrittura passa da **una sola tool**: `vault_publish`, esposta dal server MCP
 del vault. Chiamala per nome corto — il nome pieno cambia col modo di
 installazione (`mcp__vault-asernet__…` con la config manuale,
-`mcp__plugin_asernet-wiki_vault__…` se il server arriva col plugin).
+`mcp__plugin_asernet-vault_vault__…` se il server arriva col plugin).
 
 `vault_publish` fa da sé, e ti impedisce di sbagliarlo:
 

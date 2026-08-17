@@ -23,7 +23,7 @@ le operazioni git come tool con nomi propri. **Usa quelle, non Bash.**
 
 **Chiamale per nome corto.** Il nome pieno cambia col modo di installazione — è
 `mcp__vault-asernet__vault_sync` se il server è configurato a mano, e
-`mcp__plugin_asernet-wiki_vault__vault_sync` se arriva col plugin. Cerca fra le
+`mcp__plugin_asernet-vault_vault__vault_sync` se arriva col plugin. Cerca fra le
 tool disponibili quella che finisce col nome corto.
 
 Perché passare da lì e non da Bash: il server **è** l'elenco di comandi ammessi,

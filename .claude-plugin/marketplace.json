@@ -1,13 +1,13 @@
 {
-  "name": "asernet",
+  "name": "asernet-vault",
   "owner": {
     "name": "Sara Romano"
   },
   "plugins": [
     {
-      "name": "asernet-wiki",
+      "name": "asernet-vault",
       "source": "./",
-      "description": "I comandi del vault asernet: progetto, ingest, chiedi, lint, pubblica, nuovo-progetto."
+      "description": "I comandi del vault asernet: progetto, ingest, chiedi, lint, pubblica, nuovo-progetto. Include il server MCP che esegue le operazioni git."
     }
   ]
 }

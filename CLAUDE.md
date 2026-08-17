@@ -799,7 +799,7 @@ quindi non esistono. La disciplina di §9 resta scritta qui perché spiega il
 *perché*; il server ne impedisce la violazione.
 
 Il server viaggia col plugin, quindi le tool possono avere un nome scopato
-(`mcp__plugin_asernet-wiki_vault__vault_sync`) oppure il nome della
+(`mcp__plugin_asernet-vault_vault__vault_sync`) oppure il nome della
 configurazione locale (`mcp__vault-asernet__vault_sync`). **Le skill le citano
 sempre per nome corto**, altrimenti funzionano su una macchina e non sull'altra.
 
