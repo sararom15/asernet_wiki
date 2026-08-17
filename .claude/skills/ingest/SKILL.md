@@ -10,16 +10,25 @@ disable-model-invocation: true
 
 File da ingerire: `$ARGUMENTS`
 
-## Limite d'uso di Bash
+## Come si eseguono le operazioni git
 
-Bash è concesso a questa skill **solo** per la risincronizzazione della fase A.1:
+La risincronizzazione della fase A.1 passa dalla tool **`vault_sync`** del server
+MCP del vault. Chiamala per nome corto: il nome pieno cambia col modo di
+installazione (`mcp__vault-asernet__…` con la config manuale,
+`mcp__plugin_asernet-wiki_vault__…` se il server arriva col plugin).
 
-- `git fetch`, `git pull --ff-only`, `git diff`, `git log`, `git status`
+`vault_sync` fa `git pull --ff-only` e non ti dà modo di farlo diversamente. Un
+pull normale tenterebbe un merge su pagine di contenuto senza che nessuno lo
+abbia chiesto, ed è esattamente ciò che questo vault vieta.
 
-Non usarlo per altro. In particolare: niente `commit`, niente `push` — per
-quelli c'è `/pubblica` — e niente `merge`, `rebase`, `reset`, `checkout`,
-`stash`. Non usare mai `git pull` senza `--ff-only`: un merge automatico su
-pagine di contenuto è esattamente ciò che questo vault vieta.
+Bash ti resta concesso **solo in lettura** — `git fetch`, `git diff`, `git log`,
+`git status` — per arricchire il report della fase A.1. Niente `commit`, niente
+`push`: per quelli c'è `/pubblica`. E niente `merge`, `rebase`, `reset`,
+`checkout`, `stash` in nessuna circostanza.
+
+Se la tool non c'è (server non installato, plugin non aggiornato), **non
+sincronizzare a mano**: passa all'utente `git pull --ff-only` da lanciare, e
+fermati finché non l'ha fatto.
 
 ## Precondizioni — verificale prima di tutto
 
@@ -87,32 +96,24 @@ durato mezz'ora, stai per scrivere su uno stato vecchio di mezz'ora — e il pia
 che l'utente ha appena approvato è stato calcolato su un indice che nel
 frattempo potrebbe non essere più vero.
 
-```bash
-git pull --ff-only
-```
+Chiama **`vault_sync`**.
 
-### Se il pull fallisce
+### Esiti
 
-Con la working tree pulita — e qui lo è, la fase A non scrive niente —
-`--ff-only` fallisce solo se hai commit locali non spinti.
-
-Non è un problema di sincronizzazione: **è lavoro di un'operazione precedente mai
-pubblicato**. Dillo con queste parole, manda l'utente a `/pubblica`, e **fermati**.
-Non tentare rimedi: `merge`, `rebase`, `reset` e `stash` non sono nel tuo elenco.
-
-### Se il pull non ha portato niente
-
-Prosegui con la fase B senza dire nulla.
+| `result` | Cosa fai |
+|---|---|
+| `UP_TO_DATE` | Prosegui con la fase B senza dire nulla |
+| `OK`, `OK_STASH_REAPPLIED` | Il pull ha portato qualcosa: vedi sotto |
+| `AHEAD`, `DIVERGED` | **Non è un problema di sincronizzazione: è lavoro di un'operazione precedente mai pubblicato.** Dillo con queste parole, manda l'utente a `/pubblica`, e **fermati** |
+| `OK_STASH_HELD`, `STASH_POP_FAILED` | Il vault è aggiornato ma c'è lavoro in uno stash. **Fermati e riportalo**: scrivere ora sopra a un working tree che non contiene tutto ciò che credevi è il modo per perdere qualcosa senza accorgersene |
+| `FAILED` | Riporta `stderr` e **fermati**. Se c'è `cause: INDEX_LOCK`, chiedi all'utente se ha operazioni git in corso e solo in caso negativo chiama `vault_unlock` con `confirm: true`. Non tentare altri rimedi: `merge`, `rebase`, `reset` e `stash` non sono nel tuo elenco |
 
 ### Se il pull ha portato qualcosa
 
-Costruisci l'insieme **R**, i file arrivati:
+L'insieme **R** — i file arrivati — te lo dà la tool, già separato: usa
+`received.content_pages` e `received.index_and_log`.
 
-```bash
-git diff --name-only ORIG_HEAD HEAD
-```
-
-Poi separa. **Gli `index.md` e i file di `log/` non contano**: ogni operazione li
+**Gli `index.md` e i file di `log/` non contano**: ogni operazione li
 tocca, quindi includerli farebbe scattare l'allarme a ogni singolo pull e in
 pochi giorni impareresti a ignorarlo. Guarda solo le pagine di contenuto.
 
@@ -135,6 +136,9 @@ log:
 ```bash
 git log --format='%an <%ae> · %ad · %s' ORIG_HEAD..HEAD -- <file>
 ```
+
+(Il campo `received.commits` di `vault_sync` copre già il caso generale; questo
+comando serve quando ti serve sapere chi ha toccato **un file specifico**.)
 
 Poi elenca le opzioni **senza sceglierne una**:
 

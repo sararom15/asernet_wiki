@@ -15,19 +15,41 @@ agli altri autori». Non scrive contenuto, non aggiorna `index.md`, non appende
 voci di log — quelle cose le ha già fatte l'operazione che ti ha portato qui. Se
 non le ha fatte, il posto per rimediare non è questo: **fermati e dillo.**
 
-## Limite d'uso di Bash
+## Come si eseguono le operazioni git
 
-Bash è concesso **solo** per:
+La scrittura passa da **una sola tool**: `vault_publish`, esposta dal server MCP
+del vault. Chiamala per nome corto — il nome pieno cambia col modo di
+installazione (`mcp__vault-asernet__…` con la config manuale,
+`mcp__plugin_asernet-wiki_vault__…` se il server arriva col plugin).
 
-- `git fetch`, `git status`, `git diff`, `git log`, `git show`, `git merge-base`,
-  `git merge-tree`, `git ls-files`
-- `git config` in lettura
-- `git add`, `git commit`, `git merge`, `git push`
+`vault_publish` fa da sé, e ti impedisce di sbagliarlo:
 
-Non usarlo per altro. In particolare sono **fuori dal tuo elenco**:
-`reset`, `checkout`, `stash`, `rebase`, `revert`, `push --force`,
-`commit --amend`, `clean`. Se una situazione sembra richiederne uno, quella è la
-prova che devi fermarti e chiedere, non che ti serve un comando in più.
+1. rifiuta se `git config user.email` è vuota — un commit firmato da nessuno;
+2. costruisce **R** dall'antenato comune e calcola **L ∩ R**, escludendo
+   `index.md` e `log/` che ogni operazione tocca;
+3. se l'intersezione non è vuota **non scrive niente** e torna `OVERLAP`;
+4. altrimenti committa i soli path passati, fonde con `merge` (non `rebase`) e
+   spinge;
+5. se il merge dà conflitti li lascia sul disco e **non** spinge.
+
+Bash ti resta concesso **solo in lettura**, e serve a una cosa precisa:
+arricchire il report di sovrapposizione al passo 4 con i diff e col log
+dell'altra identità, che la tool non ti dà. Ammessi: `git status`, `git diff`,
+`git log`, `git show`, `git merge-base`, `git merge-tree`, `git ls-files`,
+`git config` in lettura.
+
+Sono **fuori dal tuo elenco** e non li usi in nessuna circostanza: `add`,
+`commit`, `merge`, `push` a mano — passano dalla tool — e poi `reset`,
+`checkout`, `stash`, `rebase`, `revert`, `push --force`, `commit --amend`,
+`clean`. Se una situazione sembra richiederne uno, quella è la prova che devi
+fermarti e chiedere, non che ti serve un comando in più.
+
+### Se la tool non c'è
+
+Server non installato, plugin non aggiornato, processo morto. **Non pubblicare a
+mano.** Fai i passi 1–4 in sola lettura, presenta il report, e poi passa
+all'utente i comandi esatti da lanciare, fermandoti. La verifica L ∩ R vale
+anche fatta a mano; è il push che non ti spetta.
 
 ## Precondizioni
 
@@ -37,8 +59,8 @@ prova che devi fermarti e chiedere, non che ti serve un comando in più.
   `/progetto`)? Se no, **fermati e chiedila**. Serve per il messaggio di commit e
   per sapere quale log leggere. Non dedurla dal nome dell'autore Git senza
   passare dal registro.
-- C'è qualcosa da pubblicare? `git status --porcelain`. Se è vuoto e non ci sono
-  commit locali non spinti, dillo e fermati: non è un errore, non c'è lavoro.
+- C'è qualcosa da pubblicare? Chiama `vault_status`. Se `untracked` e `modified`
+  sono vuoti e `ahead` è 0, dillo e fermati: non è un errore, non c'è lavoro.
 
 ---
 
@@ -47,10 +69,8 @@ prova che devi fermarti e chiedere, non che ti serve un comando in più.
 Costruisci l'insieme **L** — i file che *tu* hai toccato e non hai ancora
 pubblicato. Sono due componenti, servono entrambe:
 
-```bash
-git status --porcelain                      # non ancora committato
-git diff --name-only origin/main...HEAD     # committato ma non spinto
-```
+- `vault_status` ti dà `untracked` e `modified`, cioè il non committato;
+- `git diff --name-only origin/main...HEAD` ti dà il committato e non spinto.
 
 L è l'unione dei due elenchi.
 
@@ -65,61 +85,54 @@ dichiara con **L**.
 | In L ci sono file che il log non nomina | **Fermati e chiedi.** O il log è incompleto — e §9.14 vieta di completarlo «dopo» — o c'è lavoro di un'altra operazione rimasto indietro |
 | Il log nomina file che non sono in L | **Fermati e chiedi.** L'operazione dichiara scritture che sul disco non ci sono |
 
-Questo controllo è il motivo per cui `/pubblica` è una skill e non un hook. Un
-hook pubblica ciò che trova; qui si verifica prima che quello che stai per
-pubblicare sia *l'operazione che dici di aver fatto*.
+**Questo controllo è tuo e non della tool.** Il server sa quali file gli passi,
+non quali file l'operazione *dichiarava* di toccare: il log è materiale di
+dominio, e leggerlo è un lavoro di senso, non di git. È anche il motivo per cui
+`/pubblica` è una skill e non un hook — un hook pubblica ciò che trova, qui si
+verifica prima che quello che stai per pubblicare sia *l'operazione che dici di
+aver fatto*.
 
-## 3. Scopri cosa è cambiato altrove
+## 3. Chiama la tool
 
-```bash
-git fetch origin
+```
+vault_publish(files: <L>, message: "<messaggio dal passo 2>")
 ```
 
-`fetch` non tocca mai la working tree: è sempre sicuro, anche a lavoro non
-committato.
+Passa **solo i file di L**. Se `vault_status` mostra altro, è roba che non
+appartiene a questa operazione: chiedi prima di includerla.
 
-Costruisci l'insieme **R** — i file cambiati su `origin/main` da quando i vostri
-rami si sono separati:
+Esiti:
 
-```bash
-git diff --name-only HEAD...origin/main
-```
+| `result` | Cosa fai |
+|---|---|
+| `PUBLISHED` | Vai al passo 5 |
+| `OVERLAP` | Vai al passo 4. **Niente è stato scritto** |
+| `NO_IDENTITY` | `git config user.email` è vuota. Chiedi all'utente di impostarla e fermati |
+| `MERGE_CONFLICT` | Il commit c'è, il push no, i conflitti sono sul disco. Riporta i file e fermati: risolverli è una decisione umana, e un `index.md` in conflitto **non si risolve leggendo** ma si rigenera con `/lint` (§7) |
+| `PUSH_FAILED` | Qualcuno ha spinto fra il fetch e il push. Non insistere, non usare `--force`: ricomincia dal passo 1 |
+| `FAILED` | Riporta `stderr`. Se c'è `cause: INDEX_LOCK`, chiedi all'utente se ha operazioni git in corso e solo in caso negativo chiama `vault_unlock` con `confirm: true` |
 
-I tre punti non sono un refuso: `A...B` confronta **B con l'antenato comune**,
-che è esattamente «cosa hanno fatto loro», non «cosa c'è di diverso fra noi».
+## 4. Se la tool torna `OVERLAP`: REPORT e STOP
 
-Se R è vuoto, nessuno ha pubblicato nel frattempo: vai al passo 5.
+**Non ripetere la chiamata con `confirm_overlap`.** Quel parametro esiste per un
+solo caso: l'utente ha visto il report e ha detto esplicitamente come procedere.
 
-## 4. Interseca — è il cuore della skill
-
-Calcola **L ∩ R**: i file che tu hai modificato e che nel frattempo ha
-modificato anche qualcun altro.
-
-### Se l'intersezione è vuota
-
-Prosegui al passo 5. Git fonderà i due lavori senza che si tocchino.
-
-### Se l'intersezione NON è vuota: REPORT e STOP
-
-**Non pubblicare. Non fondere. Non risolvere.** Prepara il report e fermati.
-
-Per ogni file nell'intersezione raccogli:
+La tool ti dà `overlap` (i file) e `other_side` (chi, quando, con che messaggio,
+e se il contenuto dei due lati è identico o diverso). È lo scheletro. Ora
+aggiungi con Bash in lettura ciò che serve a decidere:
 
 ```bash
-# chi ha toccato il file dall'altra parte, e quando
-git log --format='%an <%ae> · %ad · %s' HEAD..origin/main -- <file>
-
-# cosa hanno cambiato loro
-git diff HEAD...origin/main -- <file>
-
-# cosa hai cambiato tu
-git diff origin/main...HEAD -- <file>    # se committato
+git diff HEAD...origin/main -- <file>     # cosa hanno cambiato loro
+git diff origin/main...HEAD -- <file>     # cosa hai cambiato tu, se committato
 git diff -- <file>                        # se ancora nella working tree
 ```
 
-Poi risali all'**identità** dell'altra persona: prendi l'email dell'autore del
-commit, cercala in `/_meta/authors.md`, ricava l'`id`, e leggi la voce in cima al
-suo log così come sta su remoto:
+I tre punti non sono un refuso: `A...B` confronta **B con l'antenato comune**,
+cioè «cosa hanno fatto loro», non «cosa c'è di diverso fra noi».
+
+Poi risali all'**identità** dell'altra persona: prendi l'email dall'`other_side`,
+cercala in `/_meta/authors.md`, ricava l'`id`, e leggi la voce in cima al suo log
+così come sta su remoto:
 
 ```bash
 git show origin/main:projects/<slug>/log/<altro-id>.md | head -20
@@ -175,50 +188,11 @@ conciliabili, la forma corretta è la 3.
 
 Dopo il report **fermati**. Non fare niente finché l'utente non risponde.
 
----
+## 5. Conferma con questo formato, e fermati
 
-## 5. Pubblica
-
-Solo se il passo 4 è passato pulito, o se l'utente ti ha detto come procedere e
-tu hai applicato *quello che ha detto*.
-
-```bash
-git add -A -- <i file di L>
-git commit -m "<messaggio dal passo 2>"
-```
-
-Committa **solo i file di L**. Se `git status` mostra altro, è roba che non
-appartiene a questa operazione: chiedi prima di includerla.
-
-Se **R** non era vuoto, prima di fondere verifica `git config --get
-merge.ours.driver`. Se non è `true`, il driver `merge=ours` su `**/index.md`
-(`.gitattributes`) non ha effetto su questa macchina: **fermati** e chiedi
-all'utente di lanciare `git config merge.ours.driver true` prima di procedere.
-È più economico fermarsi qui che disinnescare a mano dei marcatori di
-conflitto dentro un file che CLAUDE.md §7 dice di non risolvere mai a mano.
-
-Poi allinea e spingi:
-
-```bash
-git merge origin/main      # solo se R non era vuoto
-git push
-```
-
-**Usa `merge`, non `rebase`.** Il `.gitattributes` del vault dichiara
-`**/index.md merge=ours`, e in un rebase i lati si invertono: `ours` diventa il
-ramo remoto, quindi il driver terrebbe l'`index.md` degli altri invece del tuo.
-Il contenuto sarebbe comunque da rigenerare — §7 dice che quale delle due
-versioni si tiene è indifferente — ma la configurazione del repository è scritta
-per la semantica del merge, e non va sovvertita di nascosto da questa skill.
-
-Se il merge tocca un `index.md`, **quel bundle va rigenerato**: dillo nella
-conferma finale. Non rigenerarlo tu, non è il tuo compito.
-
-Se `git push` fallisce perché qualcuno ha spinto fra il tuo `fetch` e il tuo
-`push`, non insistere e **non usare `--force`**: ricomincia dal passo 3. La
-finestra è di secondi, ma esiste.
-
-## 6. Conferma con questo formato, e fermati
+Il campo `Sync` lo ricavi da `vault_status` dopo la pubblicazione. Se fra i file
+fusi c'era un `index.md`, **quel bundle va rigenerato**: dillo. Non rigenerarlo
+tu, non è il tuo compito.
 
 ```
 Pubblicato: <slug> · <id>
@@ -232,12 +206,15 @@ Da fare   : <— | /lint per rigenerare gli index toccati dal merge>
 
 ## Divieti specifici di questa skill
 
-1. Non pubblicare mai quando **L ∩ R** non è vuoto senza una risposta esplicita
-   dell'utente in questa sessione.
+1. Non chiamare `vault_publish` con `confirm_overlap` senza una risposta
+   esplicita dell'utente in questa sessione, data dopo aver visto il report.
 2. Non risolvere una sovrapposizione da solo, nemmeno se una delle due versioni
    sembra chiaramente migliore, più recente o più completa.
-3. Non usare `--force`, `--amend`, `reset`, `checkout`, `stash` o `rebase`.
+3. Non eseguire `add`, `commit`, `merge` o `push` con Bash: passano dalla tool.
+   E mai `--force`, `--amend`, `reset`, `checkout`, `stash`, `rebase`.
 4. Non scrivere nel log: la voce esiste già, l'ha scritta l'operazione. Se non
    esiste, è quella l'anomalia da segnalare.
-5. Non committare file che il log non dichiara senza aver chiesto.
+5. Non passare alla tool file che il log non dichiara senza aver chiesto.
 6. Non rigenerare gli `index.md`: segnala che serve `/lint` e fermati.
+7. Non chiamare `vault_unlock` senza aver prima chiesto all'utente se ha
+   operazioni git in corso.

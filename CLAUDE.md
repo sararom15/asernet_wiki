@@ -54,6 +54,11 @@ merge di Git è cieco al significato, unisce righe e non affermazioni. Con
 di conflitto. **Nel vault esiste un solo punto in cui avviene un vero merge, ed è
 il passo finale di `/pubblica`**, dove qualcuno sta guardando.
 
+**Le operazioni git non si eseguono a mano.** Passano dal server MCP di §12, che
+le espone come cinque tool e rende impossibile — non solo vietato — tutto il
+resto. Se il server non è disponibile, le skill restano in lettura e passano i
+comandi all'utente.
+
 ---
 
 ## 0. Ruolo
@@ -729,9 +734,16 @@ Non fare mai queste cose, nemmeno se sembrano utili:
     il §5.1 vieta all'agente, fatta da Git.
 20. Pubblicare quando `L ∩ R` non è vuoto senza una risposta esplicita
     dell'utente, o proporgli di sovrascrivere il lavoro dell'altra identità.
-21. Usare `--force`, `--amend`, `reset`, `checkout`, `stash` o `rebase` su questo
+21. Usare `--force`, `--amend`, `reset`, `checkout` o `rebase` su questo
     repository. Se una situazione sembra richiederli, è il segnale di fermarsi e
-    chiedere, non di allargare l'elenco dei comandi.
+    chiedere, non di allargare l'elenco dei comandi. Lo `stash` è ammesso in una
+    sola forma, quella di §12.1: mai a mano, mai fuori da `vault_sync`.
+22. Scartare uno stash. `git stash drop` e `git stash clear` sono decisioni
+    dell'utente: uno stash scartato non è recuperabile da nessuna parte, quindi
+    la sua distruzione non è delegabile.
+23. Rimuovere un `.git/index.lock` senza aver prima chiesto all'utente se ha
+    un'operazione git in corso. Un lock può essere legittimo, e toglierlo mentre
+    un altro processo lo tiene in mano corrompe l'indice.
 
 ---
 
@@ -768,4 +780,74 @@ vault e le aggiungi tu quando modifichi la costituzione.
 | 2026-08-04 | Sincronizzazione esplicita: comando `/pubblica` (§5.5) e ciclo completo (§5.6); Fase A.1 di risincronizzazione in §5.1; `--ff-only` come unica forma di pull ammessa, merge solo dentro `/pubblica`; controllo 14 sulle fusioni silenziose in §5.3; divieti 19–21. |
 | 2026-08-05 | Chiusura di quattro difetti strutturali rilevati in analisi: controllo di lint su `refs`/`derived_from` inesistenti (§5.3 punto 5) e su drift di `okf_version` (§5.3 punto 2); verifica del merge driver locale in `/progetto` e in `/pubblica` (§7); convenzione di archiviazione manuale per `log/<id>.md` oltre le ~50 voci (§8); sincronizzazione di `_TEMPLATES/schema.template.md` con `okf_version` (§10). |
 | 2026-08-05 | Seconda passata di correzione: rimossa la sincronizzazione col template proposta la stessa mattina — `_TEMPLATES/schema.template.md` non ha campo `okf_version` (§10); aggiunto alla checklist di §5.3 il controllo "Igiene degli index" (punto 10, già presente nella skill `/lint` ma mai in questo file), con conseguente rinumerazione dei punti 10–14 in 11–15 e correzione del rimando "controlli 11–13" in "12–14". |
+| 2026-08-17 | Le operazioni git passano da un server MCP locale (§12), che rende meccanico l'elenco dei comandi ammessi. Deroga a §9.21 per lo `stash` dentro `vault_sync`, subordinata alla guardia sulla riapplicazione (§12.1); nuovi divieti 22 (non si scarta uno stash) e 23 (non si rimuove un `index.lock` senza chiedere); rimedio esplicito al lock abbandonato (§12.2). Riscritte di conseguenza le skill `progetto`, `ingest` e `pubblica`. L'occasione: in Cowork la shell dell'agente gira su un montaggio che nega l'unlink dei file, quindi nessun fast-forward poteva completarsi. |
 | 2026-08-06 | Rimossa la convenzione di nome per i file di `raw/` (§3.4): i file si tengono col nome con cui arrivano. Il vincolo era stato scritto il 2026-08-03 e non era mai stato rispettato dall'unico file allora presente. Restano invariate le convenzioni sui nomi delle pagine `sources/` (§5.1, §6) e sul prefisso delle voci di log (§8), che sono cose diverse. |
+
+---
+
+## 12. Il server MCP del vault
+
+Le operazioni git di questo vault si eseguono attraverso il server MCP in
+`tools/vault-mcp/`, non con comandi a mano. Espone cinque tool: `vault_status`,
+`vault_sync`, `vault_publish`, `vault_unlock`, `vault_stash_list`.
+
+**Il server è l'elenco dei comandi ammessi, reso meccanico.** Fino a qui quegli
+elenchi erano prosa in cima a ogni skill: un agente li rispetta se li legge bene.
+Dentro il server, ciò che non è una tool non è raggiungibile — `--force`,
+`--amend`, `reset`, `checkout`, `rebase`, `stash drop` non sono implementati,
+quindi non esistono. La disciplina di §9 resta scritta qui perché spiega il
+*perché*; il server ne impedisce la violazione.
+
+Il server viaggia col plugin, quindi le tool possono avere un nome scopato
+(`mcp__plugin_asernet-wiki_vault__vault_sync`) oppure il nome della
+configurazione locale (`mcp__vault-asernet__vault_sync`). **Le skill le citano
+sempre per nome corto**, altrimenti funzionano su una macchina e non sull'altra.
+
+Il server trova il vault in quest'ordine: `VAULT_PATH` se impostata, poi
+risalendo da `CLAUDE_PROJECT_DIR`, poi dalla cartella di lavoro, cercando il
+primo livello che contenga sia `.git` sia `CLAUDE.md`.
+
+**Se le tool non sono disponibili** — server non installato, plugin non
+aggiornato, processo morto — le skill non tornano a scrivere a mano: restano in
+sola lettura e **passano all'utente i comandi da lanciare**. Un vault senza
+server è un vault in cui l'agente legge e propone; non uno in cui improvvisa.
+
+### 12.1 Lo `stash` dentro `vault_sync`
+
+`vault_sync` fa `git pull --ff-only`. Se il working tree è d'ostacolo — file non
+tracciati che il fast-forward sovrascriverebbe — mette via **i soli file
+bloccanti** con `git stash push -u`, rifà il fast-forward, e poi si ferma a
+pensare prima di riapplicarli.
+
+La deroga a §9.21 vale solo grazie a quella pausa. Un auto-stash come lo fa
+GitHub Desktop riapplica sempre, e il `pop` **fonde** le modifiche sul nuovo
+albero: su una pagina di contenuto è una fusione automatica senza nessuno che
+guardi, cioè ciò che §9.19 vieta. Desktop può permetterselo perché ha una persona
+davanti a una GUI; un agente no.
+
+Quindi la guardia: prima del `pop`, confronta i file messi via con quelli che il
+pull ha portato, escludendo `index.md` e `log/`.
+
+- **Non si intersecano** → `pop`. Le tue modifiche tornano al loro posto.
+- **Si intersecano** → **nessun `pop`**. Lo stash resta intatto e il referto dice,
+  per ogni file, se la copia locale è identica a quella arrivata (duplicato) o
+  diversa (contenuto che il remoto non ha). La decisione torna all'utente, con le
+  stesse opzioni di §5.5: rifare il dry run, integrare a mano, registrare una
+  contraddizione.
+
+Un vault aggiornato con del lavoro parcheggiato in uno stash è uno stato
+legittimo ma **invisibile**: va dichiarato in modo esplicito a fine operazione,
+altrimenti la prossima scrittura avviene su un disco che non contiene tutto
+quello che si crede.
+
+### 12.2 Il lock dell'indice
+
+Un `.git/index.lock` abbandonato — lasciato da un processo git morto a metà —
+blocca ogni scrittura sull'indice, quindi `vault_publish` non parte nemmeno. Ha
+un rimedio, `vault_unlock`, e tre cautele che non sono negoziabili:
+
+1. **si chiede prima all'utente** se ha un'operazione git in corso, perché in
+   quel caso il lock è legittimo (§9.23);
+2. la tool rifiuta i lock più giovani di 60 secondi;
+3. non cancella: **rinomina**. Un lock spostato non è più visto da Git ma resta
+   sul disco, e se si scopre di aver sbagliato si rimette a posto.

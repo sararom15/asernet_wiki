@@ -9,29 +9,48 @@ allowed-tools: Read, Glob, Grep, Bash
 
 Argomento ricevuto: `$ARGUMENTS`
 
-## Limite d'uso di Bash
+## Come si eseguono le operazioni git
 
-Bash è concesso a questa skill **solo** per i comandi elencati qui sotto:
+Il vault porta con sé un **server MCP** (`tools/vault-mcp/server.js`) che espone
+le operazioni git come tool con nomi propri. **Usa quelle, non Bash.**
 
-- `git pull --ff-only`, `git fetch`, `git status`, `git diff`, `git log`
-  (incluso `git log -1 --format=%ae` del passo 0.1)
-- `git config user.email`, `git config user.name` e
-  `git config merge.ours.driver` (in lettura)
-- il `grep` sui log del passo 5
+| Tool | A cosa serve |
+|---|---|
+| `vault_status` | stato: branch, avanti/indietro, untracked, stash, identità, merge driver, lock |
+| `vault_sync` | `git pull --ff-only`, con auto-stash guardato se il working tree è d'ostacolo |
+| `vault_unlock` | mette da parte un `.git/index.lock` abbandonato, solo con conferma |
+| `vault_publish` | usata da `/pubblica`, non da qui |
 
-Non usarlo per altro. In particolare: niente `git commit`, niente `git push`,
-niente `git merge`, niente `git checkout`, niente `git reset`, nessuna scrittura
-di file. Se serve un'operazione fuori da questo elenco, fermati e chiedila
-all'utente.
+**Chiamale per nome corto.** Il nome pieno cambia col modo di installazione — è
+`mcp__vault-asernet__vault_sync` se il server è configurato a mano, e
+`mcp__plugin_asernet-wiki_vault__vault_sync` se arriva col plugin. Cerca fra le
+tool disponibili quella che finisce col nome corto.
+
+Perché passare da lì e non da Bash: il server **è** l'elenco di comandi ammessi,
+reso meccanico. Ciò che non è una tool non è eseguibile — `--force`, `reset`,
+`checkout`, `rebase`, `stash drop` non esistono in quel processo. Un elenco
+scritto in italiano lo rispetti se lo leggi bene; questo lo rispetti per
+costruzione.
+
+### Se le tool non ci sono
+
+Possono mancare: server non installato, plugin non aggiornato, processo morto.
+In quel caso **non improvvisare le scritture**. Bash ti resta concesso solo per
+i comandi in **sola lettura** — `git fetch`, `git status`, `git diff`,
+`git log`, `git config` in lettura — e per il `grep` sui log del passo 5.
+
+Tutto ciò che tocca il working tree — `pull`, `stash`, `commit`, `merge`,
+`push` — lo **passi all'utente da lanciare a mano**, con il comando esatto, e ti
+fermi. Non usare `git pull` senza `--ff-only`, non usare `stash` fuori dalla
+tool, e non usare mai `merge`, `rebase`, `reset`, `checkout`, `--force`,
+`--amend`: quelli restano vietati in ogni circostanza (CLAUDE.md §9.21).
 
 Questa skill gira all'apertura di ogni sessione: è il punto del sistema in cui un
 errore costa di più.
 
 ## Passo 0 — Sincronizza (sempre, anche senza argomento)
 
-```
-git pull --ff-only
-```
+Chiama **`vault_sync`**.
 
 Il pull non è igiene di sincronizzazione, è una **precondizione di correttezza**.
 La query legge prima gli `index.md`: su un vault non aggiornato non sai che certe
@@ -39,72 +58,100 @@ pagine esistono e produci una soglia di astensione falsa — dichiari che la wik
 non copre un argomento che invece copre. Un'astensione sbagliata è peggio di un
 errore, perché sembra prudenza.
 
-**`--ff-only` non è opzionale.** Senza, il pull tenterebbe un merge su pagine di
-contenuto senza che nessuno lo abbia chiesto, che è esattamente ciò che questo
-vault vieta: il merge di Git è cieco al significato, unisce righe e non
-affermazioni. Con `--ff-only` il pull o avanza pulito o fallisce, e non può mai
-produrre marcatori di conflitto. **Nel vault esiste un solo punto in cui avviene
-un vero merge, ed è il passo 5 di `/pubblica`**, dove qualcuno sta guardando.
+**Il pull è sempre `--ff-only`, e la tool non ti dà modo di farlo diversamente.**
+Un pull normale tenterebbe un merge su pagine di contenuto senza che nessuno lo
+abbia chiesto, che è ciò che questo vault vieta: il merge di Git è cieco al
+significato, unisce righe e non affermazioni. **Nel vault esiste un solo punto in
+cui avviene un vero merge, ed è dentro `/pubblica`**, dove qualcuno sta guardando.
 
-Esito del pull:
+Esiti di `vault_sync`:
 
-| Situazione | Cosa fai |
+| `result` | Cosa fai |
 |---|---|
-| Già aggiornato | Prosegui |
-| Avanzamento pulito | Prosegui, e riporta le novità al passo 0.2 |
-| **Fallisce** | Hai commit locali non spinti: lavoro di un'operazione precedente mai pubblicato. Dillo, manda l'utente a **`/pubblica`**, e **fermati**. Non caricare lo schema, non proseguire |
-| Fallisce per altro motivo | Riporta l'errore testuale e fermati. Non tentare rimedi: `merge`, `rebase`, `reset`, `checkout` e `stash` non sono nel tuo elenco |
+| `UP_TO_DATE` | Prosegui |
+| `OK` | Prosegui, e riporta le novità al passo 0.2 leggendole dal campo `received` |
+| `OK_STASH_REAPPLIED` | Prosegui. Il working tree era d'ostacolo, la guardia ha verificato che non ci fosse sovrapposizione e ha rimesso a posto le tue modifiche. Dillo in una riga |
+| `OK_STASH_HELD` | **Il vault è aggiornato ma il tuo lavoro è in uno stash.** Vedi sotto |
+| `AHEAD` | Hai commit non spinti: lavoro di un'operazione precedente mai pubblicato. Manda l'utente a **`/pubblica`** e **fermati** |
+| `DIVERGED` | Cronologia divergente. Manda a `/pubblica`, che ha la verifica L ∩ R, e **fermati** |
+| `STASH_POP_FAILED` | Il vault è aggiornato, lo stash è intatto. Riportalo e **fermati** |
+| `FAILED` | Riporta `stderr` e **fermati**. Se c'è il campo `cause: INDEX_LOCK`, vedi il passo 0.0 |
+
+### Passo 0.0 — Lock abbandonato
+
+Se un esito porta `cause: INDEX_LOCK`, un `.git/index.lock` sta bloccando ogni
+scrittura sull'indice. Succede quando un processo git muore a metà.
+
+Non chiamare `vault_unlock` di iniziativa. **Chiedi prima all'utente se ha
+un'operazione git in corso** — GitHub Desktop, un altro terminale, un client
+grafico — perché in quel caso il lock è legittimo e toglierlo corrompe l'indice.
+Solo se la risposta è no, chiama `vault_unlock` con `confirm: true`.
+
+La tool rifiuta comunque i lock più giovani di 60 secondi, e non cancella: sposta.
+
+### `OK_STASH_HELD` — la guardia si è attivata
+
+Significa che le modifiche che avevi sul disco toccano pagine di contenuto che il
+pull ha appena cambiato, e riapplicarle sarebbe una fusione automatica senza
+nessuno che guardi. La tool non l'ha fatta.
+
+Riporta all'utente il campo `guard.files`, che per ogni file dice:
+
+- `IDENTICO` — la copia locale è un duplicato esatto di ciò che è arrivato.
+  Scartarla non perde niente, ma **è l'utente a decidere**: lo `stash drop` non
+  esiste fra le tool, perché uno stash scartato non è recuperabile.
+- `DIVERSO` — c'è contenuto locale che il remoto non ha. Le opzioni sono quelle
+  di §5.5 del CLAUDE.md: rifare il dry run, integrare a mano, registrare una
+  contraddizione. Non esiste «tieni la mia».
+
+Puoi proseguire col caricamento dello schema — il vault *è* aggiornato — ma dillo
+in modo visibile nella conferma finale: c'è lavoro parcheggiato che nessuno vede.
 
 ## Passo 0.1 — Stabilisci l'identità attiva
 
 Serve a sapere in quale `log/<id>.md` scriveranno `/ingest` e `/lint` più avanti
-nella sessione. Interroga **due** fonti, in quest'ordine:
+nella sessione. `vault_status` te la dà già in due campi:
 
-```
-git config user.email        # A — chi firmerà il prossimo commit
-git log -1 --format=%ae      # B — chi ha firmato l'ultimo
-```
+- `identity_config` — chi firmerà il prossimo commit (`git config user.email`)
+- `identity_last_commit` — chi ha firmato l'ultimo
 
 Cerca l'email in `/_meta/authors.md` e ricava l'`id` corrispondente.
 
-| A | B | Cosa fai |
+| `identity_config` | `identity_last_commit` | Cosa fai |
 |---|---|---|
-| presente | — | Usa **A**. È l'identità che firmerà ciò che scrivi in questa sessione |
-| **vuota** | presente e nel registro | Usa **B**, e **dichiaralo nella conferma finale**: «identità dedotta dall'ultimo commit» |
-| vuota | vuota o assente dal registro | **Chiedi all'utente chi sta lavorando** |
-| presente | presente ma **diversa da A** | Riporta entrambe e **chiedi**: `/pubblica` firmerebbe con A, ma il repository è stato scritto da B |
+| presente | — | Usa la prima. È l'identità che firmerà ciò che scrivi in questa sessione |
+| **null** | presente e nel registro | Usa la seconda, e **dichiaralo nella conferma finale**: «identità dedotta dall'ultimo commit» |
+| null | null o assente dal registro | **Chiedi all'utente chi sta lavorando** |
+| presente | presente ma **diversa** | Riporta entrambe e **dillo**, senza fermarti: in un vault a più mani è la norma, non un errore. `/pubblica` firmerà con la prima |
 
-**Una risposta vuota da A non significa che l'identità non sia configurata.**
-Questo è il caso normale, non l'eccezione: il comando gira nella shell
-dell'agente, che può avere un `HOME` proprio e non vedere il `.gitconfig`
-globale della macchina dell'utente — è ciò che succede quando l'utente ha
-configurato l'identità da GitHub Desktop o da un altro client grafico, che
-scrive nel globale e non nel `.git/config` del repository. Fallire qui e chiedere
-a ogni singola apertura di sessione è rumore che addestra l'utente a rispondere
-senza leggere, il che è peggio del difetto che la domanda voleva prevenire.
+**`identity_config` null non significa che l'identità non sia configurata.**
+Quando il server gira nella sandbox di un agente, quel processo può avere un
+`HOME` proprio e non vedere il `.gitconfig` globale della macchina — è ciò che
+succede quando l'identità è stata impostata da GitHub Desktop o da un altro
+client grafico. Il server MCP locale invece gira con l'ambiente dell'utente e di
+norma la vede.
 
-**Perché B è evidenza e non un indovinello.** L'email dell'ultimo commit è la
-configurazione che il repository ha *effettivamente usato* per firmare: è un
-fatto registrato, non una somiglianza. Restano vietate le deduzioni che il
-divieto originale colpiva, e vanno lette come vietate anche adesso: **non
-dedurre un id dal nome della cartella, dal contenuto delle pagine, dal nome
-dell'account sul sistema o da una somiglianza fra nomi propri.** Un id sbagliato
-firma un'operazione a nome di qualcun altro.
+**Perché il secondo campo è evidenza e non un indovinello.** L'email dell'ultimo
+commit è la configurazione che il repository ha *effettivamente usato* per
+firmare: è un fatto registrato, non una somiglianza. Restano vietate le deduzioni
+che il divieto originale colpiva: **non dedurre un id dal nome della cartella,
+dal contenuto delle pagine, dal nome dell'account sul sistema o da una
+somiglianza fra nomi propri.** Un id sbagliato firma un'operazione a nome di
+qualcun altro.
 
-Su un repository senza commit (bundle appena creato) B è vuota per costruzione:
-si ricade nel terzo caso, e si chiede.
+Su un repository senza commit (bundle appena creato) il secondo campo è null per
+costruzione: si ricade nel terzo caso, e si chiede.
 
 ## Passo 0.2 — Cosa è cambiato da quando eri qui
 
-Solo se il pull ha portato qualcosa.
+Solo se `vault_sync` ha portato qualcosa. Il campo `received` è già separato per
+te:
 
-```bash
-git diff --name-only ORIG_HEAD HEAD
-git log --format='%an <%ae> · %ad · %s' ORIG_HEAD..HEAD
-```
-
-Separa le **pagine di contenuto** dagli `index.md` e dai file di `log/`: i
-secondi cambiano a ogni operazione e non dicono niente sul merito.
+- `received.content_pages` — le **pagine di contenuto**, l'unica cosa che dice
+  qualcosa sul merito;
+- `received.index_and_log` — `index.md` e file di `log/`, che cambiano a ogni
+  operazione e non dicono niente;
+- `received.commits` — chi ha pubblicato, quando, con che messaggio.
 
 Per ogni identità che ha pubblicato, leggi la voce in cima al suo log e riportala
 in una riga. Il log dice *cosa credeva di fare*, che è l'informazione utile;
@@ -114,24 +161,20 @@ Questo passo esiste perché `/chiedi` non ha una fase in cui rifare il lavoro:
 chi apre una sessione solo per interrogare la wiki non passerà mai dal controllo
 di risincronizzazione di `/ingest`, e deve sapere qui che il terreno si è mosso.
 
-Se fra i file arrivati c'è un `index.md`, segnala che potrebbe servire `/lint`
-per rigenerarlo.
+Se `vault_sync` riporta `note_lint`, segnalalo: sono arrivati degli `index.md` e
+potrebbe servire `/lint` per rigenerarli.
 
 ## Passo 0.3 — Verifica il merge driver locale
 
-```
-git config --get merge.ours.driver
-```
-
-Se il risultato non è `true`, il driver `merge=ours` su `**/index.md`
-(`.gitattributes`, CLAUDE.md §7) non ha effetto su questa macchina: al primo
-vero merge — dentro `/pubblica` — un `index.md` in conflitto produrrebbe
-marcatori invece di essere risolto in automatico.
+`vault_status` riporta `merge_ours_driver`. Se non è `ok`, il driver
+`merge=ours` su `**/index.md` (`.gitattributes`, CLAUDE.md §7) non ha effetto su
+questa macchina: al primo vero merge — dentro `/pubblica` — un `index.md` in
+conflitto produrrebbe marcatori invece di essere risolto in automatico.
 
 Non è bloccante per questa sessione: annota l'esito in `Sync:` nella conferma
-finale (passo successivo) e indica il comando da lanciare —
-`git config merge.ours.driver true` — senza eseguirlo tu: è configurazione
-locale della macchina dell'utente, non del vault.
+finale e indica il comando da lanciare — `git config merge.ours.driver true` —
+senza eseguirlo tu. È configurazione della macchina dell'utente, non del vault,
+e per questo non esiste una tool che la imposti.
 
 ## Se l'argomento è vuoto
 
@@ -163,9 +206,10 @@ Poi chiedi quale attivare e fermati.
 
 ```
 Progetto attivo: <slug> — <titolo>
-Identità attiva: <id> <| dedotta dall'ultimo commit, se A era vuota>    Sync: <aggiornato | N commit ricevuti | index da rigenerare>
+Identità attiva: <id> <| dedotta dall'ultimo commit, se identity_config era null>    Sync: <esito di vault_sync>
 Merge driver: <ok | non impostato — lancia `git config merge.ours.driver true`>
 Novità: <— oppure: <n> pagine di contenuto da <id>, <riga della sua voce di log>>
+Parcheggiato: <— oppure: <n> file in stash, la guardia non li ha riapplicati>
 Lingua: <…>    Tipi ammessi: <elenco dal vocabolario dello schema>
 Pagine: <n>    Ultimo movimento: <data, operazione e identità dal log>
 Aperto: <domande aperte e gap dall'index, se presenti>

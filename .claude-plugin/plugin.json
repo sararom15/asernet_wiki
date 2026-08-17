@@ -1,11 +1,17 @@
 {
   "name": "asernet-wiki",
-  "version": "0.1.0",
-  "description": "I comandi del vault asernet: progetto, ingest, chiedi, lint, pubblica, nuovo-progetto. Applicano il metodo definito in CLAUDE.md.",
+  "version": "0.2.0",
+  "description": "I comandi del vault asernet: progetto, ingest, chiedi, lint, pubblica, nuovo-progetto. Applicano il metodo definito in CLAUDE.md. Include il server MCP che esegue le operazioni git del vault.",
   "author": {
     "name": "Sara Romano"
   },
   "repository": "https://github.com/sararom15/asernet-wiki",
   "keywords": ["wiki", "okf", "obsidian", "knowledge-base"],
-  "skills": "./.claude/skills/"
+  "skills": "./.claude/skills/",
+  "mcpServers": {
+    "vault": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/vault-mcp/server.js"]
+    }
+  }
 }

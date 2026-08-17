@@ -33,17 +33,73 @@ const path = require('path');
 
 // ---------------------------------------------------------------- config
 
-const VAULT_PATH = process.env.VAULT_PATH;
+/**
+ * Trovare il vault.
+ *
+ * Quando il server arriva dentro un plugin non può esistere un VAULT_PATH
+ * scritto nella config: `${CLAUDE_PLUGIN_ROOT}` è la copia del plugin nella
+ * cache, mentre il vault di lavoro sta dove ogni persona l'ha clonato. Quindi
+ * il server si arrangia, in quest'ordine:
+ *
+ *   1. VAULT_PATH, se impostata. È l'override esplicito e vince su tutto:
+ *      chi ha più di un vault deve poter dire quale.
+ *   2. risalita da CLAUDE_PROJECT_DIR, se l'ambiente la fornisce.
+ *   3. risalita dalla cartella di lavoro del processo.
+ *
+ * «Risalita» significa: da quella cartella verso la radice, il primo livello
+ * che contiene sia `.git` sia `CLAUDE.md`. Entrambi, non uno: `.git` da solo
+ * è un qualunque repository, `CLAUDE.md` da solo è un qualunque progetto.
+ * Il primo che ha entrambi è un vault.
+ */
+function findVaultFrom(start) {
+  if (!start) return null;
+  let dir;
+  try {
+    dir = fs.realpathSync(start);
+  } catch {
+    return null;
+  }
+  for (;;) {
+    if (fs.existsSync(path.join(dir, '.git')) && fs.existsSync(path.join(dir, 'CLAUDE.md'))) {
+      return dir;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+
+function resolveVault() {
+  const explicit = process.env.VAULT_PATH;
+  if (explicit) return { path: explicit, source: 'VAULT_PATH' };
+
+  const fromProject = findVaultFrom(process.env.CLAUDE_PROJECT_DIR);
+  if (fromProject) return { path: fromProject, source: 'risalita da CLAUDE_PROJECT_DIR' };
+
+  const fromCwd = findVaultFrom(process.cwd());
+  if (fromCwd) return { path: fromCwd, source: 'risalita dalla cartella di lavoro' };
+
+  return { path: null, source: null };
+}
+
+const RESOLVED = resolveVault();
+const VAULT_PATH = RESOLVED.path;
 
 function assertVault() {
   if (!VAULT_PATH) {
-    throw new Error('VAULT_PATH non è impostata nella config del server MCP.');
+    throw new Error(
+      'Non trovo il vault. Ho cercato VAULT_PATH nell\'ambiente, poi ho risalito da ' +
+        `CLAUDE_PROJECT_DIR e dalla cartella di lavoro (${process.cwd()}) in cerca di una ` +
+        'cartella che contenga sia .git sia CLAUDE.md, senza successo. ' +
+        'Imposta VAULT_PATH nella configurazione del server, oppure apri la sessione ' +
+        'dentro la cartella del vault.'
+    );
   }
   if (!fs.existsSync(path.join(VAULT_PATH, '.git'))) {
-    throw new Error(`VAULT_PATH non è un repository git: ${VAULT_PATH}`);
+    throw new Error(`Il path risolto non è un repository git: ${VAULT_PATH}`);
   }
   if (!fs.existsSync(path.join(VAULT_PATH, 'CLAUDE.md'))) {
-    throw new Error(`VAULT_PATH non sembra un vault (manca CLAUDE.md): ${VAULT_PATH}`);
+    throw new Error(`Il path risolto non sembra un vault (manca CLAUDE.md): ${VAULT_PATH}`);
   }
 }
 
@@ -64,6 +120,26 @@ function git(args, opts = {}) {
       stdout: (e.stdout || '').trim(),
       stderr: (e.stderr || e.message || '').trim(),
     };
+  }
+}
+
+/**
+ * Come git(), ma **senza trim**. Serve a `status --porcelain`, dove lo stato
+ * occupa due colonne a larghezza fissa e un file modificato arriva come
+ * " M path": un trim mangerebbe lo spazio iniziale della prima riga — e solo di
+ * quella — facendo perdere il primo carattere di quel path. È un bug che si
+ * manifesta su un file su sette, quindi vale la pena di una funzione a parte.
+ */
+function gitRaw(args) {
+  try {
+    return execFileSync('git', args, {
+      cwd: VAULT_PATH,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 120000,
+    }) || '';
+  } catch (e) {
+    return e.stdout || '';
   }
 }
 
@@ -132,7 +208,11 @@ function vaultStatus() {
   const up = upstream();
   git(['fetch', '--quiet']);
   const { ahead, behind } = aheadBehind();
-  const porcelain = lines(gitOrThrow(['status', '--porcelain']));
+  // ATTENZIONE: non passare da lines(), che fa trim(). In --porcelain lo stato
+  // occupa due colonne e un file modificato arriva come " M path": il trim
+  // mangerebbe lo spazio iniziale e lo slice(3) taglierebbe la prima lettera
+  // del path. Le due colonne sono a larghezza fissa, quindi si tagliano così.
+  const porcelain = gitRaw(['status', '--porcelain']).split('\n').filter((l) => l.length > 3);
   const untracked = porcelain.filter((l) => l.startsWith('??')).map((l) => l.slice(3));
   const modified = porcelain.filter((l) => !l.startsWith('??')).map((l) => l.slice(3));
   const driver = git(['config', '--get', 'merge.ours.driver']).stdout;
@@ -142,6 +222,7 @@ function vaultStatus() {
 
   return {
     vault: VAULT_PATH,
+    vault_resolved_by: RESOLVED.source,
     branch,
     upstream: up,
     ahead,
