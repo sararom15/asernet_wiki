@@ -807,14 +807,21 @@ Il server trova il vault in quest'ordine: `VAULT_PATH` se impostata, poi
 risalendo da `CLAUDE_PROJECT_DIR`, poi dalla cartella di lavoro, cercando il
 primo livello che contenga sia `.git` sia `CLAUDE.md`.
 
-**`plugin.json` non ha un campo `version`, e la sua assenza è deliberata: non
-reintrodurlo.** Senza quel campo la versione del plugin è il commit SHA del
-repository, quindi ogni push è un aggiornamento disponibile e pubblicare il vault
-coincide con distribuire il metodo. Con una versione dichiarata a mano, una
-modifica a una skill non raggiunge nessuno finché qualcuno non si ricorda di
-alzare il numero — e le altre identità restano su un metodo superato credendo di
-avere l'ultimo, che è lo stesso difetto che il pull obbligatorio di §5.6 esiste
-per impedire.
+**`version` in `plugin.json` va incrementato a ogni modifica delle skill o del
+server. Non rimuoverlo.** La documentazione di Claude Code elenca il commit SHA
+come versione di ripiego per le marketplace ospitate su Git, il che suggerisce
+che il campo sia superfluo. **In Cowork non funziona così**: verificato il
+2026-08-06 e di nuovo il 2026-08-17, senza `version` il push arriva su GitHub e
+il pulsante *Aggiorna* resta disattivato, senza alcun messaggio. Chi legge la
+documentazione e «corregge» questa scelta rompe la distribuzione in un modo
+silenzioso, che è il peggiore.
+
+Il difetto di questo schema è reale e va tenuto a mente: una modifica pubblicata
+senza incremento non raggiunge nessuno, e le altre identità restano su un metodo
+superato credendo di avere l'ultimo — lo stesso difetto che il pull obbligatorio
+di §5.6 esiste per impedire. Non essendoci un modo automatico, l'incremento fa
+parte dell'operazione: se `/pubblica` include un file di `.claude/skills/` o di
+`tools/`, include anche `plugin.json`.
 
 **Se le tool non sono disponibili** — server non installato, plugin non
 aggiornato, processo morto — le skill non tornano a scrivere a mano: restano in
