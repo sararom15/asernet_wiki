@@ -358,7 +358,7 @@ function vaultStatus() {
     modified,
     stashes,
     index_lock: lockInfo(),
-    merge_ours_driver: driver === 'true' ? 'ok' : 'NON IMPOSTATO — lancia: git config merge.ours.driver true',
+    merge_ours_driver: driver === 'true' ? 'ok' : 'NON IMPOSTATO — chiama vault_setup',
     identity_config: email || null,
     identity_last_commit: lastEmail || null,
   };
@@ -505,8 +505,8 @@ function vaultSync() {
   const driver = git(['config', '--get', 'merge.ours.driver']).stdout;
   if (driver !== 'true') {
     report.warning_merge_driver =
-      'merge.ours.driver non è true su questa macchina: al primo vero merge un index.md ' +
-      'in conflitto produrrebbe marcatori. Lancia: git config merge.ours.driver true';
+      'merge.ours.driver non è true su questo clone: al primo vero merge un index.md ' +
+      'in conflitto produrrebbe marcatori. Chiama vault_setup, che lo definisce in locale.';
   }
   if (report.received.index_and_log.some((p) => p.endsWith('index.md'))) {
     report.note_lint = 'Sono arrivati degli index.md: potrebbe servire /lint per rigenerarli.';
@@ -703,6 +703,92 @@ function vaultUnlock({ confirm }) {
   };
 }
 
+/**
+ * Prepara questo clone: definisce il driver di merge `ours` che il
+ * `.gitattributes` del vault dichiara per gli `index.md`.
+ *
+ * Perché è una tool e non una riga di istruzioni per l'utente. Il driver è
+ * l'unico pezzo di configurazione che il vault *richiede* e che Git non può
+ * versionare, quindi ogni identità deve impostarlo a mano su ogni macchina, e
+ * nessuno se ne accorge finché non è tardi: senza driver il primo vero merge
+ * lascia marcatori di conflitto dentro un file derivato, cioè dentro l'unico
+ * tipo di file che il §7 vieta di risolvere leggendo. Un passo obbligatorio,
+ * idempotente e senza rischio che dipende dalla memoria di chi installa è un
+ * passo che prima o poi salta. Il §12 dice di rendere meccanico ciò che
+ * altrimenti resta disciplina: questo ne è il caso più netto.
+ *
+ * **Solo `--local`, mai `--global`.** La distinzione è tutto l'argomento: la
+ * scrittura finisce in `.git/config` dentro il clone del vault, che è lo stesso
+ * perimetro su cui questo server già opera. Nessun altro repository della
+ * macchina viene toccato e `~/.gitconfig` resta com'è. Una tool che scrivesse
+ * globalmente cambierebbe il comportamento di merge di repository che con
+ * questo vault non c'entrano niente, e non sarebbe difendibile.
+ *
+ * `true` non è un booleano: è il comando `/bin/true`, che riesce senza fare
+ * niente. Git lo legge come «fusione riuscita», e la versione che resta è
+ * quella locale. È ciò che serve su un file derivato, che poi si rigenera.
+ *
+ * Non agisce in silenzio: dice sempre cosa ha trovato e cosa ha scritto. Un
+ * `.git/config` in sola lettura deve produrre un errore visibile, non un
+ * successo finto.
+ */
+function vaultSetup() {
+  assertVault();
+
+  const effettivo = git(['config', '--get', 'merge.ours.driver']).stdout;
+  const locale = git(['config', '--local', '--get', 'merge.ours.driver']).stdout;
+
+  if (effettivo === 'true') {
+    return {
+      result: 'ALREADY_OK',
+      merge_ours_driver: 'true',
+      scope: locale === 'true' ? 'local' : 'ereditato da una configurazione più ampia (global o system)',
+      message:
+        'Il driver è già attivo su questo clone: non ho scritto niente.' +
+        (locale === 'true'
+          ? ''
+          : ' Vale perché è definito fuori dal repository; se quella configurazione sparisse, ' +
+            'richiamare questa tool lo fisserebbe in locale.'),
+    };
+  }
+
+  const set = git(['config', '--local', 'merge.ours.driver', 'true']);
+  if (!set.ok) {
+    return {
+      result: 'FAILED',
+      previous: effettivo || null,
+      stderr: set.stderr,
+      message:
+        'Non sono riuscito a scrivere in .git/config. Le cause tipiche sono un file in sola ' +
+        'lettura o un permesso negato sul montaggio: si risolve sulla macchina, non da qui.',
+    };
+  }
+
+  const verifica = git(['config', '--local', '--get', 'merge.ours.driver']).stdout;
+  if (verifica !== 'true') {
+    return {
+      result: 'FAILED',
+      written: 'true',
+      read_back: verifica || null,
+      message:
+        'Ho scritto il valore ma rileggendolo non risulta: non dichiaro un successo che non ' +
+        'posso verificare.',
+    };
+  }
+
+  return {
+    result: 'CONFIGURED',
+    merge_ours_driver: 'true',
+    scope: 'local',
+    previous: effettivo || null,
+    config_file: path.join(VAULT_PATH, '.git', 'config'),
+    message:
+      'Driver `ours` definito nel .git/config di questo clone: da ora un index.md che finisce ' +
+      'in un merge tiene la versione locale invece di produrre marcatori. Nessuna configurazione ' +
+      'globale è stata toccata. La versione che resta è comunque derivata: si rigenera con /lint.',
+  };
+}
+
 function vaultStashList() {
   assertVault();
   const list = lines(git(['stash', 'list']).stdout);
@@ -774,6 +860,13 @@ const TOOLS = [
       },
     },
     handler: vaultUnlock,
+  },
+  {
+    name: 'vault_setup',
+    description:
+      'Prepara questo clone del vault: definisce in .git/config il driver di merge `ours` che il .gitattributes dichiara per gli index.md, senza il quale un merge lascia marcatori di conflitto dentro un file derivato. Scrive solo --local, mai --global: nessun altro repository della macchina viene toccato. Idempotente: se il driver è già attivo non scrive niente e lo dice.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: vaultSetup,
   },
   {
     name: 'vault_stash_list',

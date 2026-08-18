@@ -92,6 +92,18 @@ dominio, e leggerlo è un lavoro di senso, non di git. È anche il motivo per cu
 verifica prima che quello che stai per pubblicare sia *l'operazione che dici di
 aver fatto*.
 
+## 2-bis. Assicurati del merge driver
+
+Il passo 3 può finire in un vero merge, ed è l'unico punto del vault in cui
+succede. Se `vault_status` riporta `merge_ours_driver` diverso da `ok`, **chiama
+`vault_setup` prima di pubblicare**: definisce `merge.ours.driver` in `--local`
+nel `.git/config` di questo clone, senza toccare niente fuori. È idempotente e
+costa una chiamata; senza, un `index.md` che entra nel merge esce con i
+marcatori dentro — e un `index.md` in conflitto non si risolve leggendo (§7).
+
+Se torna `FAILED`, dillo e **fermati prima del passo 3**: qui, a differenza di
+`/progetto`, l'assenza del driver ha una conseguenza immediata.
+
 ## 3. Chiama la tool
 
 ```
@@ -211,7 +223,9 @@ Da fare   : <— | /lint per rigenerare gli index toccati dal merge>
 2. Non risolvere una sovrapposizione da solo, nemmeno se una delle due versioni
    sembra chiaramente migliore, più recente o più completa.
 3. Non eseguire `add`, `commit`, `merge` o `push` con Bash: passano dalla tool.
-   E mai `--force`, `--amend`, `reset`, `checkout`, `stash`, `rebase`.
+   E mai `--force`, `--amend`, `reset`, `checkout`, `stash`, `rebase`. Nemmeno
+   `git config` in scrittura: per il merge driver c'è `vault_setup`, che scrive
+   solo in locale — un `--global` a mano cambierebbe repository estranei al vault.
 4. Non scrivere nel log: la voce esiste già, l'ha scritta l'operazione. Se non
    esiste, è quella l'anomalia da segnalare.
 5. Non passare alla tool file che il log non dichiara senza aver chiesto.

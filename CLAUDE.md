@@ -55,7 +55,7 @@ di conflitto. **Nel vault esiste un solo punto in cui avviene un vero merge, ed 
 il passo finale di `/pubblica`**, dove qualcuno sta guardando.
 
 **Le operazioni git non si eseguono a mano.** Passano dal server MCP di §12, che
-le espone come cinque tool e rende impossibile — non solo vietato — tutto il
+le espone come sei tool e rende impossibile — non solo vietato — tutto il
 resto. Se il server non è disponibile, le skill restano in lettura e passano i
 comandi all'utente.
 
@@ -631,14 +631,38 @@ indifferente — e si rigenera con `/lint`.
 
 Il `.gitattributes` del vault dichiara `**/index.md merge=ours`, che accetta
 automaticamente la versione locale. Perché abbia effetto serve
-`git config merge.ours.driver true` su **ogni** macchina: è configurazione
-locale, non viaggia col repository. Se vedi marcatori di conflitto dentro un
-`index.md`, quella configurazione manca da qualche parte — segnalalo.
+`merge.ours.driver` definito su **ogni** clone: è configurazione locale, non
+viaggia col repository. Se vedi marcatori di conflitto dentro un `index.md`,
+quella configurazione manca da qualche parte.
 
 `/progetto` la verifica all'apertura di ogni sessione, e `/pubblica` la
 riverifica subito prima del passo di merge — l'unico punto in cui la sua
-assenza produce danno reale. Nessuna delle due skill la imposta: solo la
-segnalano, perché è configurazione della macchina dell'utente, non del vault.
+assenza produce danno reale. Quando manca, la impostano: chiamano `vault_setup`
+(§12), che la scrive **in locale**, dentro il `.git/config` di questo clone.
+
+**La scrittura è `--local` e non `--global`, e la distinzione è tutto
+l'argomento.** Fino al 2026-08-18 queste righe dicevano che le skill si limitano
+a segnalare, «perché è configurazione della macchina dell'utente, non del
+vault». Era una premessa sbagliata: `--local` finisce in `.git/config` dentro il
+clone, cioè nello stesso perimetro su cui il server MCP già opera, e non tocca
+nessun altro repository della macchina. È configurazione del vault — solo, della
+parte che Git non sa versionare. Una tool che scrivesse `--global`
+cambierebbe il comportamento di merge di repository che con questo vault non
+c'entrano niente, e resterebbe vietata.
+
+Il modo di fallire giustifica l'automatismo. Non c'è errore, non c'è avviso:
+solo marcatori che compaiono più tardi dentro un file derivato, cioè dentro
+l'unico tipo di file che le righe qui sopra vietano di risolvere leggendo. Il
+rimedio invece è idempotente, uguale per tutti e senza rischio. Un passo
+obbligatorio che dipende dalla memoria di chi installa è un passo che prima o
+poi salta — è la stessa ragione per cui le operazioni git sono passate a un
+server (§12).
+
+Restano due cose che `vault_setup` non fa. Non rigenera l'`index.md` che il
+driver ha risolto tenendo la versione locale: quella resta derivata e va
+rifatta con `/lint`. E non si sostituisce alla segnalazione: riporta sempre cosa
+ha trovato e cosa ha scritto, perché un `.git/config` in sola lettura deve
+produrre un errore visibile e non un successo finto.
 
 ---
 
@@ -781,6 +805,7 @@ vault e le aggiungi tu quando modifichi la costituzione.
 | 2026-08-05 | Chiusura di quattro difetti strutturali rilevati in analisi: controllo di lint su `refs`/`derived_from` inesistenti (§5.3 punto 5) e su drift di `okf_version` (§5.3 punto 2); verifica del merge driver locale in `/progetto` e in `/pubblica` (§7); convenzione di archiviazione manuale per `log/<id>.md` oltre le ~50 voci (§8); sincronizzazione di `_TEMPLATES/schema.template.md` con `okf_version` (§10). |
 | 2026-08-05 | Seconda passata di correzione: rimossa la sincronizzazione col template proposta la stessa mattina — `_TEMPLATES/schema.template.md` non ha campo `okf_version` (§10); aggiunto alla checklist di §5.3 il controllo "Igiene degli index" (punto 10, già presente nella skill `/lint` ma mai in questo file), con conseguente rinumerazione dei punti 10–14 in 11–15 e correzione del rimando "controlli 11–13" in "12–14". |
 | 2026-08-17 | Le operazioni git passano da un server MCP locale (§12), che rende meccanico l'elenco dei comandi ammessi. Deroga a §9.21 per lo `stash` dentro `vault_sync`, subordinata alla guardia sulla riapplicazione (§12.1); nuovi divieti 22 (non si scarta uno stash) e 23 (non si rimuove un `index.lock` senza chiedere); rimedio esplicito al lock abbandonato (§12.2). Riscritte di conseguenza le skill `progetto`, `ingest` e `pubblica`. L'occasione: in Cowork la shell dell'agente gira su un montaggio che nega l'unlink dei file, quindi nessun fast-forward poteva completarsi. |
+| 2026-08-18 | Il merge driver locale si imposta invece di segnalarsi: nuova tool `vault_setup` (§12), che scrive `merge.ours.driver` in `--local` nel `.git/config` del clone; riscritto il capoverso finale di §7, la cui premessa — «è configurazione della macchina dell'utente, non del vault» — valeva solo per `--global`. `/progetto` e `/pubblica` la chiamano quando `vault_status` riporta il driver assente. L'occasione: una seconda identità bloccata al primo uso del plugin, con la scansione del vault ferma a un livello di profondità e il driver mai impostato. |
 | 2026-08-06 | Rimossa la convenzione di nome per i file di `raw/` (§3.4): i file si tengono col nome con cui arrivano. Il vincolo era stato scritto il 2026-08-03 e non era mai stato rispettato dall'unico file allora presente. Restano invariate le convenzioni sui nomi delle pagine `sources/` (§5.1, §6) e sul prefisso delle voci di log (§8), che sono cose diverse. |
 
 ---
@@ -788,8 +813,8 @@ vault e le aggiungi tu quando modifichi la costituzione.
 ## 12. Il server MCP del vault
 
 Le operazioni git di questo vault si eseguono attraverso il server MCP in
-`tools/vault-mcp/`, non con comandi a mano. Espone cinque tool: `vault_status`,
-`vault_sync`, `vault_publish`, `vault_unlock`, `vault_stash_list`.
+`tools/vault-mcp/`, non con comandi a mano. Espone sei tool: `vault_status`,
+`vault_sync`, `vault_publish`, `vault_setup`, `vault_unlock`, `vault_stash_list`.
 
 **Il server è l'elenco dei comandi ammessi, reso meccanico.** Fino a qui quegli
 elenchi erano prosa in cima a ogni skill: un agente li rispetta se li legge bene.

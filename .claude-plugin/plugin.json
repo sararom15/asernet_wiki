@@ -1,7 +1,7 @@
 {
   "name": "asernet-vault",
-  "version": "1.3.0",
-  "description": "I comandi del vault asernet: progetto, ingest, chiedi, lint, pubblica, nuovo-progetto. Applicano il metodo definito in CLAUDE.md. Include il server MCP che esegue le operazioni git del vault.",
+  "version": "1.3.1",
+  "description": "I comandi del vault asernet: progetto, ingest, chiedi, lint, pubblica, nuovo-progetto. Applicano il metodo definito in CLAUDE.md. Include il server MCP che esegue le operazioni git del vault e prepara il clone.",
   "author": {
     "name": "Sara Romano"
   },

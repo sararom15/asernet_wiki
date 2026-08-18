@@ -80,17 +80,21 @@ usi email diverse per progetti diversi.
 > identità ignota. O disattivi la protezione, o registri l'indirizzo mascherato come
 > alias nella tua riga di `_meta/authors.md`.
 
-### 3. Attiva il merge driver
+### 3. Il merge driver: non devi fare niente
 
-**Passaggio obbligatorio, e non viaggia col repository: va rifatto su ogni macchina.**
+**Lo imposta `/progetto`**, alla prima sessione che apri su questa macchina:
+`vault_status` si accorge che manca e la skill chiama `vault_setup`, che scrive
+`merge.ours.driver` dentro il `.git/config` di questo clone. Solo in locale —
+nessun altro repository della tua macchina viene toccato.
+
+Serve perché la configurazione non viaggia col repository, quindi ogni clone
+parte senza. Se vuoi farlo a mano, o se `vault_setup` riporta che `.git/config`
+non è scrivibile, il comando è questo, da lanciare dentro la cartella del vault
+(in GitHub Desktop: `Repository` → `Open in Command Prompt`):
 
 ```bash
 git config merge.ours.driver true
 ```
-
-Questo non ha un equivalente nell'interfaccia di GitHub Desktop: va lanciato da
-terminale, una volta sola, dentro la cartella del vault
-(`Repository` → `Open in Command Prompt`).
 
 Gli `index.md` sono file derivati: la loro versione corretta non sta in nessuno dei
 due rami di un conflitto, sta nel frontmatter delle pagine. Il `.gitattributes`

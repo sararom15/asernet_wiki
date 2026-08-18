@@ -18,6 +18,7 @@ le operazioni git come tool con nomi propri. **Usa quelle, non Bash.**
 |---|---|
 | `vault_status` | stato: branch, avanti/indietro, untracked, stash, identità, merge driver, lock |
 | `vault_sync` | `git pull --ff-only`, con auto-stash guardato se il working tree è d'ostacolo |
+| `vault_setup` | definisce in locale il merge driver `ours` che il `.gitattributes` richiede |
 | `vault_unlock` | mette da parte un `.git/index.lock` abbandonato, solo con conferma |
 | `vault_publish` | usata da `/pubblica`, non da qui |
 
@@ -164,17 +165,23 @@ di risincronizzazione di `/ingest`, e deve sapere qui che il terreno si è mosso
 Se `vault_sync` riporta `note_lint`, segnalalo: sono arrivati degli `index.md` e
 potrebbe servire `/lint` per rigenerarli.
 
-## Passo 0.3 — Verifica il merge driver locale
+## Passo 0.3 — Imposta il merge driver locale
 
 `vault_status` riporta `merge_ours_driver`. Se non è `ok`, il driver
 `merge=ours` su `**/index.md` (`.gitattributes`, CLAUDE.md §7) non ha effetto su
-questa macchina: al primo vero merge — dentro `/pubblica` — un `index.md` in
+questo clone: al primo vero merge — dentro `/pubblica` — un `index.md` in
 conflitto produrrebbe marcatori invece di essere risolto in automatico.
 
-Non è bloccante per questa sessione: annota l'esito in `Sync:` nella conferma
-finale e indica il comando da lanciare — `git config merge.ours.driver true` —
-senza eseguirlo tu. È configurazione della macchina dell'utente, non del vault,
-e per questo non esiste una tool che la imposti.
+**Chiama `vault_setup`.** Scrive `merge.ours.driver` in `--local`, dentro il
+`.git/config` di questo clone, e non tocca nessuna configurazione globale né
+altri repository della macchina. È idempotente: se il driver c'è già torna
+`ALREADY_OK` senza scrivere.
+
+Riporta l'esito in `Merge driver:` nella conferma finale — `impostato ora` è
+un'informazione, non un dettaglio da nascondere. Se torna `FAILED` non insistere
+e non ripiegare su Bash: `.git/config` non è scrivibile, e va risolto sulla
+macchina. In quel caso segnalalo e prosegui: non è bloccante per questa
+sessione, lo diventa al primo merge.
 
 ## Se l'argomento è vuoto
 
@@ -207,7 +214,7 @@ Poi chiedi quale attivare e fermati.
 ```
 Progetto attivo: <slug> — <titolo>
 Identità attiva: <id> <| dedotta dall'ultimo commit, se identity_config era null>    Sync: <esito di vault_sync>
-Merge driver: <ok | non impostato — lancia `git config merge.ours.driver true`>
+Merge driver: <già ok | impostato ora da vault_setup | NON impostabile — .git/config non scrivibile>
 Novità: <— oppure: <n> pagine di contenuto da <id>, <riga della sua voce di log>>
 Parcheggiato: <— oppure: <n> file in stash, la guardia non li ha riapplicati>
 Lingua: <…>    Tipi ammessi: <elenco dal vocabolario dello schema>
