@@ -21,7 +21,7 @@ L'`id` è in kebab-case ed è **stabile**: cambiano nome ed email, non l'id.
 |---|---|---|---|
 | `sara` | human | Sara Romano | sara.romano.15@gmail.com |
 | `anna` | human | Anna Angeloro | annaangeloro11@gmail.com |
-| `marco` | human | Marco Marcelloni | info@bitsite.it |
+| `marco` | human | Marco Macelloni | info@bitsite.it |
 | `claude-ingest` | agent | Claude — operazioni di `/ingest` sul vault | — |
 
 ## Regola di disambiguazione

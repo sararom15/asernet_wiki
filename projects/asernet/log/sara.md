@@ -1,5 +1,10 @@
 # Log — asernet · sara
 
+## [2026-08-18] lint
+- 0 bloccanti, 22 da sanare, 5 da valutare, 3 corretti
+- Corretto: creati sources/index.md, entities/index.md, concepts/index.md (derivati dal frontmatter); index.md di radice (sezioni ora linkate, rimosso il gap corrispondente)
+- Fusioni silenziose: 4 pagine (merge 68d5b32 del 2026-08-06)
+
 ## [2026-08-06] ingest | datapyx.ai — sito (Home, Chi Siamo, Metodologia, Audit SEO)
 - Fonte depositata: raw/2026-08-06-sito-datapyx-ai.md (cattura di 4 pagine, autorizzata esplicitamente in sessione in deroga al CLAUDE.md §0)
 - Creato: sources/2026-08-06-sito-datapyx-ai.md, concepts/metodologia-datapyx.md, concepts/audit-seo-datapyx.md, concepts/data-genius.md

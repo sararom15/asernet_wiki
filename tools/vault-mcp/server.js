@@ -138,23 +138,39 @@ function scanForVault() {
   ];
 
   const trovati = new Set();
-  for (const radice of radici) {
+
+  /** Le sottocartelle di `radice`, symlink inclusi. Vuoto se non è leggibile. */
+  function figlie(radice) {
     let voci;
     try {
       voci = fs.readdirSync(radice, { withFileTypes: true });
     } catch {
-      continue;
+      return [];
     }
-    for (const v of voci) {
+    return voci
       // I symlink vanno accettati: su Windows le cartelle reindirizzate — da
       // OneDrive, o da una junction verso un altro disco — non sono directory
       // per `withFileTypes`, e scartarle renderebbe la scansione cieca proprio
       // sulle configurazioni meno standard.
-      if (!(v.isDirectory() || v.isSymbolicLink()) || v.name.startsWith('.')) continue;
-      const dir = path.join(radice, v.name);
-      if (!fs.existsSync(path.join(dir, '.git'))) continue;
-      if (!fs.existsSync(path.join(dir, 'CLAUDE.md'))) continue;
-      if (originOf(dir).includes(atteso)) trovati.add(dir);
+      .filter((v) => (v.isDirectory() || v.isSymbolicLink()) && !v.name.startsWith('.'))
+      .map((v) => path.join(radice, v.name));
+  }
+
+  function esamina(dir) {
+    if (!fs.existsSync(path.join(dir, '.git'))) return;
+    if (!fs.existsSync(path.join(dir, 'CLAUDE.md'))) return;
+    if (originOf(dir).includes(atteso)) trovati.add(dir);
+  }
+
+  // Due livelli sotto ogni radice, non uno. Un solo livello presuppone che il
+  // clone stia direttamente dentro una cartella nota, ma è normale raggrupparlo
+  // — `Documents/Obsidian/<vault>`, `Documents/lavoro/<vault>` — e con la
+  // profondità 1 quei cloni risultavano invisibili. Scendere costa poco: le due
+  // `existsSync` scartano quasi tutto prima di arrivare a invocare git.
+  for (const radice of radici) {
+    for (const figlia of figlie(radice)) {
+      esamina(figlia);
+      for (const nipote of figlie(figlia)) esamina(nipote);
     }
   }
 

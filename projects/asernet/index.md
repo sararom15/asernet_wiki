@@ -9,9 +9,9 @@ Wiki interna di Asernet, agenzia di consulenza strategica per progetti e-commerc
 **Metodo**: vedi [schema](_meta/schema.md) · **Storico**: vedi [log](log.md)
 
 ## Sezioni
-- Fonti — 4 pagine
-- Entità — 16 pagine
-- Concetti — 6 pagine
+- [Fonti](sources/index.md) — 4 pagine
+- [Entità](entities/index.md) — 16 pagine
+- [Concetti](concepts/index.md) — 6 pagine
 - Decisioni — 0 pagine
 - Sintesi — 0 pagine
 
@@ -24,7 +24,6 @@ Wiki interna di Asernet, agenzia di consulenza strategica per progetti e-commerc
 - Il Positioning Canvas (2023) ha un tono da esercizio guidato, forse assistito da IA: non è chiaro se rifletta una posizione validata dal team Asernet — vedi `sources/2023-06-30-positioning-canvas-asernet.md`.
 
 ## Gap
-- Mancano gli `index.md` di sezione (`sources/`, `entities/`, `concepts/`), richiesti dalla §7 del CLAUDE.md: da rigenerare con `/lint`.
 - Le sottopagine del menu di asernet.it (Agency, Business Design, Performance marketing, E-commerce & IT, IA & Data Analysis, Case studies, Blog, Contatti, Team, Partnership, Area clienti) non sono ancora state recuperate/ingerite.
 - Le "quattro aree di offerta" (Business Design, Performance Marketing, E-commerce & IT, IA & Data Analysis) non hanno ancora pagine `Concept` proprie: per ora sono descritte solo dentro `entities/asernet.md`, in attesa di decidere la granularità (schema §4, ancora aperta).
 - Di datapyx.ai non sono state recuperate la sezione "News & Approfondimenti" né l'area applicativa dietro login.
