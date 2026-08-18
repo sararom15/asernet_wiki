@@ -121,7 +121,8 @@ Esiti:
 | `OVERLAP` | Vai al passo 4. **Niente è stato scritto** |
 | `NO_IDENTITY` | `git config user.email` è vuota. Chiedi all'utente di impostarla e fermati |
 | `MERGE_CONFLICT` | Il commit c'è, il push no, i conflitti sono sul disco. Riporta i file e fermati: risolverli è una decisione umana, e un `index.md` in conflitto **non si risolve leggendo** ma si rigenera con `/lint` (§7) |
-| `PUSH_FAILED` | Qualcuno ha spinto fra il fetch e il push. Non insistere, non usare `--force`: ricomincia dal passo 1 |
+| `OFFLINE` | **Il commit c'è ed è integro, manca solo la rete.** Non rifare niente e non richiamare la tool: i file sono già committati. Riporta l'hash, di' che l'operazione si chiude con un `git push` dalla macchina dell'utente quando la rete torna, e fermati |
+| `PUSH_FAILED` | Il remoto è andato avanti fra il fetch e il push. Non insistere, non usare `--force`: ricomincia dal passo 1. **Distinguilo da `OFFLINE`**: qui il remoto ha risposto, lì non l'ha fatto |
 | `FAILED` | Riporta `stderr`. Se c'è `cause: INDEX_LOCK`, chiedi all'utente se ha operazioni git in corso e solo in caso negativo chiama `vault_unlock` con `confirm: true` |
 
 ## 4. Se la tool torna `OVERLAP`: REPORT e STOP

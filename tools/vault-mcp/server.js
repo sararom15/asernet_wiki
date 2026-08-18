@@ -4,7 +4,7 @@
 /**
  * vault-mcp — server MCP locale per un vault wiki multi-progetto.
  *
- * Espone CINQUE operazioni git con nomi propri. Non espone una shell.
+ * Espone SEI operazioni git con nomi propri. Non espone una shell.
  * Ciò che non è una tool qui dentro non è eseguibile: l'elenco di comandi
  * ammessi delle skill smette di essere una regola scritta in italiano e
  * diventa la superficie del server.
@@ -333,7 +333,10 @@ function vaultStatus() {
   assertVault();
   const branch = gitOrThrow(['rev-parse', '--abbrev-ref', 'HEAD']);
   const up = upstream();
-  git(['fetch', '--quiet']);
+  // Vedi la nota in vaultSync: un fetch fallito lascia @{u} fermo all'ultima
+  // sincronizzazione riuscita, e ahead/behind diventano una fotografia vecchia
+  // presentata come attuale. Qui il rimedio è dirlo in chiaro nel referto.
+  const fetch = git(['fetch', '--quiet']);
   const { ahead, behind } = aheadBehind();
   // ATTENZIONE: non passare da lines(), che fa trim(). In --porcelain lo stato
   // occupa due colonne e un file modificato arriva come " M path": il trim
@@ -352,6 +355,10 @@ function vaultStatus() {
     vault_resolved_by: RESOLVED.source,
     branch,
     upstream: up,
+    remote_check: fetch.ok
+      ? 'ok'
+      : (isOffline(fetch.stderr) ? 'OFFLINE' : 'FAILED') +
+        ' — ahead/behind sono fermi all\'ultima sincronizzazione riuscita, non a adesso',
     ahead,
     behind,
     untracked,
@@ -378,10 +385,34 @@ function vaultSync() {
   assertVault();
   const report = { steps: [] };
 
-  git(['fetch', '--quiet']);
+  // L'esito del fetch NON si butta via. Senza rete `git fetch` fallisce in
+  // silenzio, `@{u}` resta al valore dell'ultima sincronizzazione riuscita, e
+  // il confronto qui sotto dice `UP_TO_DATE` su un remoto che nessuno ha
+  // guardato. È il caso peggiore che questo server possa produrre: la skill
+  // riferisce «nessuna novità», l'agente applica la soglia di astensione a un
+  // bundle vecchio, e dichiara scoperto un argomento che la wiki copre. Il §7
+  // lo chiama astensione falsa — sembra prudenza, è un errore. Meglio dire
+  // «non lo so» che dire «no» senza aver guardato.
+  const fetch = git(['fetch', '--quiet']);
+  if (!fetch.ok) {
+    report.remote_check = isOffline(fetch.stderr) ? 'OFFLINE' : 'FAILED';
+    report.remote_stderr = fetch.stderr;
+  }
   const { ahead, behind } = aheadBehind();
   report.ahead = ahead;
   report.behind = behind;
+
+  if (!fetch.ok) {
+    report.result = 'UNKNOWN';
+    report.head = gitOrThrow(['rev-parse', '--short', 'HEAD']);
+    report.message =
+      'Non ho potuto interrogare il remoto: i conteggi ahead/behind qui sopra sono ' +
+      'calcolati sull\'ultima sincronizzazione riuscita, non su adesso. **Non riferire ' +
+      '«nessuna novità»**: la risposta corretta è «non lo so». Se in questa sessione si ' +
+      'useranno /chiedi o il dry run di /ingest, dichiara che girano su un vault ' +
+      'potenzialmente arretrato.';
+    return report;
+  }
 
   if (ahead > 0 && behind > 0) {
     report.result = 'DIVERGED';
@@ -597,7 +628,24 @@ function vaultPublish({ files, message, confirm_overlap }) {
   }
 
   const push = git(['push']);
-  if (!push.ok) return { result: 'PUSH_FAILED', commit: sha, stderr: push.stderr };
+  if (!push.ok) {
+    if (isOffline(push.stderr)) {
+      return {
+        result: 'OFFLINE',
+        commit: sha,
+        identity: email,
+        files: L,
+        stderr: push.stderr,
+        message:
+          'Il commit è fatto ed è integro: la verifica L ∩ R è passata, i file sono dentro, ' +
+          'la firma è tua. Manca solo il push, perché da qui la rete verso il remoto non c\'è. ' +
+          'Non c\'è niente da rifare e niente da recuperare: quando la rete torna, `git push` ' +
+          'dalla macchina dell\'utente chiude l\'operazione. Non ripetere vault_publish: ' +
+          'i file sono già committati, una seconda chiamata non troverebbe niente da aggiungere.',
+      };
+    }
+    return { result: 'PUSH_FAILED', commit: sha, stderr: push.stderr };
+  }
 
   return {
     result: 'PUBLISHED',
@@ -606,6 +654,41 @@ function vaultPublish({ files, message, confirm_overlap }) {
     files: L,
     message: String(message),
   };
+}
+
+/**
+ * Il push è fallito perché il remoto era irraggiungibile, non perché qualcuno
+ * ci è arrivato prima?
+ *
+ * La distinzione non è cosmetica. `PUSH_FAILED` significa «il remoto è andato
+ * avanti mentre lavoravi», e la procedura che ne consegue è rifare tutto dal
+ * primo passo. Applicata a una macchina senza rete quella diagnosi è falsa e
+ * costosa: manda a rifare un lavoro che è già sul disco, integro, sulla base di
+ * una causa che non è mai esistita. È lo stesso modo di sbagliare
+ * dell'astensione falsa del §7 — sembra prudenza, è un errore.
+ *
+ * Il riconoscimento è per stringa e quindi imperfetto: git non espone un codice
+ * d'uscita che separi i due casi, e i messaggi cambiano con le versioni e con
+ * la lingua. Sbagliare in un verso è però molto meno grave che nell'altro: un
+ * OFFLINE preso per PUSH_FAILED fa rifare del lavoro inutilmente, mentre il
+ * contrario lascia solo un commit non spinto, che il prossimo vault_status
+ * segnala come `ahead`. Nel dubbio questa funzione dice di no.
+ */
+function isOffline(stderr) {
+  const s = String(stderr || '').toLowerCase();
+  return [
+    'could not resolve host',
+    'could not resolve proxy',
+    'connection timed out',
+    'connection refused',
+    'network is unreachable',
+    'temporary failure in name resolution',
+    'failed to connect to',
+    'operation timed out',
+    'ssl connect error',
+    'from proxy after connect',
+    'proxy connect aborted',
+  ].some((needle) => s.includes(needle));
 }
 
 /**

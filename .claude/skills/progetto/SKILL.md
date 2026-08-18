@@ -70,6 +70,7 @@ Esiti di `vault_sync`:
 | `result` | Cosa fai |
 |---|---|
 | `UP_TO_DATE` | Prosegui |
+| `UNKNOWN` | **Il remoto non è stato interrogato: senza rete il fetch fallisce e `ahead`/`behind` restano fermi all'ultima sincronizzazione riuscita.** Non scrivere «nessuna novità»: scrivi che non lo sai. E avvisa che per tutta la sessione `/chiedi` e il dry run di `/ingest` girano su un vault potenzialmente arretrato — è la condizione che produce l'astensione falsa (§7) |
 | `OK` | Prosegui, e riporta le novità al passo 0.2 leggendole dal campo `received` |
 | `OK_STASH_REAPPLIED` | Prosegui. Il working tree era d'ostacolo, la guardia ha verificato che non ci fosse sovrapposizione e ha rimesso a posto le tue modifiche. Dillo in una riga |
 | `OK_STASH_HELD` | **Il vault è aggiornato ma il tuo lavoro è in uno stash.** Vedi sotto |
@@ -213,7 +214,7 @@ Poi chiedi quale attivare e fermati.
 
 ```
 Progetto attivo: <slug> — <titolo>
-Identità attiva: <id> <| dedotta dall'ultimo commit, se identity_config era null>    Sync: <esito di vault_sync>
+Identità attiva: <id> <| dedotta dall'ultimo commit, se identity_config era null>    Sync: <esito di vault_sync — se UNKNOWN: «non verificato, nessuna rete»>
 Merge driver: <già ok | impostato ora da vault_setup | NON impostabile — .git/config non scrivibile>
 Novità: <— oppure: <n> pagine di contenuto da <id>, <riga della sua voce di log>>
 Parcheggiato: <— oppure: <n> file in stash, la guardia non li ha riapplicati>

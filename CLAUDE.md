@@ -806,6 +806,7 @@ vault e le aggiungi tu quando modifichi la costituzione.
 | 2026-08-05 | Seconda passata di correzione: rimossa la sincronizzazione col template proposta la stessa mattina — `_TEMPLATES/schema.template.md` non ha campo `okf_version` (§10); aggiunto alla checklist di §5.3 il controllo "Igiene degli index" (punto 10, già presente nella skill `/lint` ma mai in questo file), con conseguente rinumerazione dei punti 10–14 in 11–15 e correzione del rimando "controlli 11–13" in "12–14". |
 | 2026-08-17 | Le operazioni git passano da un server MCP locale (§12), che rende meccanico l'elenco dei comandi ammessi. Deroga a §9.21 per lo `stash` dentro `vault_sync`, subordinata alla guardia sulla riapplicazione (§12.1); nuovi divieti 22 (non si scarta uno stash) e 23 (non si rimuove un `index.lock` senza chiedere); rimedio esplicito al lock abbandonato (§12.2). Riscritte di conseguenza le skill `progetto`, `ingest` e `pubblica`. L'occasione: in Cowork la shell dell'agente gira su un montaggio che nega l'unlink dei file, quindi nessun fast-forward poteva completarsi. |
 | 2026-08-18 | Il merge driver locale si imposta invece di segnalarsi: nuova tool `vault_setup` (§12), che scrive `merge.ours.driver` in `--local` nel `.git/config` del clone; riscritto il capoverso finale di §7, la cui premessa — «è configurazione della macchina dell'utente, non del vault» — valeva solo per `--global`. `/progetto` e `/pubblica` la chiamano quando `vault_status` riporta il driver assente. L'occasione: una seconda identità bloccata al primo uso del plugin, con la scansione del vault ferma a un livello di profondità e il driver mai impostato. |
+| 2026-08-18 | Il caso «senza rete» smette di travestirsi da altro (§12): `vault_publish` distingue `OFFLINE` da `PUSH_FAILED`, `vault_sync` restituisce `UNKNOWN` invece di `UP_TO_DATE` quando il `fetch` fallisce, `vault_status` espone `remote_check`. Aggiornate le tabelle degli esiti in `progetto` e `pubblica`. L'occasione: un `vault_publish` finito in `PUSH_FAILED` per assenza di rete, la cui procedura — «qualcuno ha spinto fra il fetch e il push, ricomincia dal passo 1» — avrebbe fatto rifare un lavoro già integro sul disco. Cercando la causa è emerso il difetto peggiore: l'esito del `fetch` veniva scartato, quindi un vault mai sincronizzato veniva riferito come allineato. |
 | 2026-08-06 | Rimossa la convenzione di nome per i file di `raw/` (§3.4): i file si tengono col nome con cui arrivano. Il vincolo era stato scritto il 2026-08-03 e non era mai stato rispettato dall'unico file allora presente. Restano invariate le convenzioni sui nomi delle pagine `sources/` (§5.1, §6) e sul prefisso delle voci di log (§8), che sono cose diverse. |
 
 ---
@@ -815,6 +816,27 @@ vault e le aggiungi tu quando modifichi la costituzione.
 Le operazioni git di questo vault si eseguono attraverso il server MCP in
 `tools/vault-mcp/`, non con comandi a mano. Espone sei tool: `vault_status`,
 `vault_sync`, `vault_publish`, `vault_setup`, `vault_unlock`, `vault_stash_list`.
+
+**Le tool non danno per scontata la rete, e il caso senza rete non si confonde
+con nessun altro.** L'ambiente in cui il plugin viene usato può non raggiungere
+GitHub: si legge, si scrive su disco e si committa, ma non si spinge e non si
+sincronizza. Due esiti distinti servono a non mentire su questo.
+
+`vault_publish` separa `OFFLINE` da `PUSH_FAILED`. Sono cose opposte: il secondo
+significa che il remoto è andato avanti mentre lavoravi, e la cura è rifare dal
+primo passo; il primo significa che il remoto non ha risposto affatto, e non c'è
+niente da rifare — il commit è già sul disco, integro e firmato, e aspetta solo
+un `git push`. Trattare il primo come il secondo manda a rifare del lavoro sulla
+base di una causa che non è mai esistita.
+
+`vault_sync` restituisce `UNKNOWN` invece di `UP_TO_DATE` quando il `fetch`
+fallisce. È la correzione più importante delle due: senza rete `git fetch` non
+protesta, `@{u}` resta al valore dell'ultima sincronizzazione riuscita, e il
+confronto ahead/behind produce un «nessuna novità» che nessuno ha verificato.
+Da lì l'agente applica la soglia di astensione a un bundle vecchio e dichiara
+scoperto un argomento che la wiki copre — l'astensione falsa del §7, arrivata
+per una strada che non passa da nessuna decisione sbagliata. **Non sapere si
+dice.**
 
 **Il server è l'elenco dei comandi ammessi, reso meccanico.** Fino a qui quegli
 elenchi erano prosa in cima a ogni skill: un agente li rispetta se li legge bene.
